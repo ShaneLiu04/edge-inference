@@ -1,0 +1,52 @@
+{
+  "seed": 0,
+  "shape": {
+    "N": 2,
+    "IC": 16,
+    "OC": 32,
+    "H": 12,
+    "W": 12,
+    "K": 3
+  },
+  "folded_channel_amax_ratio": 478.6196611070649,
+  "output_rel_rmse": {
+    "per_channel_folded": 0.005326232958935155,
+    "per_tensor_folded": 0.015235141309381504,
+    "per_channel_then_bn": 0.005326232958935151,
+    "act_quant_between_conv_and_bn": 0.006922851178683673
+  },
+  "weight_rel_rmse_by_channel": {
+    "per_channel": {
+      "median": 0.005998479680637635,
+      "worst": 0.008708185722260519,
+      "worst_channel": 3,
+      "n_above_10pct": 0
+    },
+    "per_tensor": {
+      "median": 0.05944533086031558,
+      "worst": 1.0,
+      "worst_channel": 9,
+      "n_above_10pct": 15
+    }
+  },
+  "output_rel_rmse_by_channel": {
+    "per_channel": {
+      "median": 0.005412347681028702,
+      "worst": 0.008432980478221275,
+      "worst_channel": 3,
+      "n_above_10pct": 0
+    },
+    "per_tensor": {
+      "median": 0.05063886536373649,
+      "worst": 0.9363290487043938,
+      "worst_channel": 5,
+      "n_above_10pct": 15
+    },
+    "act_quant_between_conv_and_bn": {
+      "median": 0.007929708376172646,
+      "worst": 0.010919386340300583,
+      "worst_channel": 6,
+      "n_above_10pct": 0
+    }
+  }
+}

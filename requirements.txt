@@ -1,0 +1,18 @@
+# CPU dependencies for every test suite, experiment script and figure in this repo.
+# Tested with Python 3.12: numpy 2.5, scipy 1.18, pandas 3.1, matplotlib 3.11, torch 2.6 (CPU),
+# torchvision 0.21, onnx 1.23, onnxruntime 1.31, gguf 0.19, transformers 4.57, pyarrow 26.
+# CPU-only torch: pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+# C++ labs need g++ >= 11 with AVX2; the VNNI / AVX-512 kernels skip themselves on CPUs without them.
+numpy>=1.26
+scipy>=1.11
+pandas>=2.1
+matplotlib>=3.8
+pytest>=8.0
+torch>=2.3
+torchvision>=0.18
+onnx>=1.16
+onnxruntime>=1.18
+gguf>=0.10
+safetensors>=0.4
+transformers>=4.45
+pyarrow>=15

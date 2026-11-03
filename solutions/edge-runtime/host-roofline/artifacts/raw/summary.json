@@ -1,0 +1,80 @@
+{
+  "t1": {
+    "levels": [
+      {
+        "name": "L1",
+        "lo_bytes": 16384,
+        "hi_bytes": 1048576,
+        "gbps": 124.088966
+      },
+      {
+        "name": "L2",
+        "lo_bytes": 2097152,
+        "hi_bytes": 16777216,
+        "gbps": 32.242664899999994
+      },
+      {
+        "name": "DRAM",
+        "lo_bytes": 33554432,
+        "hi_bytes": 536870912,
+        "gbps": 13.7752457
+      }
+    ],
+    "dram_read_gbps": 13.4168087,
+    "l1_read_gbps": 166.131582,
+    "triad_dram_gbps": 13.7893509,
+    "fp32_gflops": 154.930387,
+    "int8_gops": 396.071006,
+    "fp32_ridge": 11.547484238930826,
+    "int8_ridge": 29.520507808984412,
+    "int8_over_fp32": 2.556444953564855
+  },
+  "t4": {
+    "levels": [
+      {
+        "name": "L1",
+        "lo_bytes": 16384,
+        "hi_bytes": 4194304,
+        "gbps": 451.451774
+      },
+      {
+        "name": "L2",
+        "lo_bytes": 8388608,
+        "hi_bytes": 16777216,
+        "gbps": 118.0787635
+      },
+      {
+        "name": "DRAM",
+        "lo_bytes": 33554432,
+        "hi_bytes": 536870912,
+        "gbps": 49.6992283
+      }
+    ],
+    "dram_read_gbps": 48.4413758,
+    "l1_read_gbps": 595.892758,
+    "triad_dram_gbps": 49.1374548,
+    "fp32_gflops": 596.592323,
+    "int8_gops": 1492.65969,
+    "fp32_ridge": 12.315759268753055,
+    "int8_ridge": 30.81373444393377,
+    "int8_over_fp32": 2.5019760269359015
+  },
+  "edge_devices": [
+    {
+      "slug": "nrf52840",
+      "dram_gbps": null
+    },
+    {
+      "slug": "stm32h747",
+      "dram_gbps": null
+    },
+    {
+      "slug": "pi5",
+      "dram_gbps": 17.068
+    },
+    {
+      "slug": "orin-nano-8g",
+      "dram_gbps": 68.0
+    }
+  ]
+}

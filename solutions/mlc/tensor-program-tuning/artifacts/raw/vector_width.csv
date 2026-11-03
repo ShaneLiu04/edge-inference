@@ -1,0 +1,17 @@
+problem,key,gflops_256,gflops_512
+square_256,ojki_ikji_t2x64x64_p1_u4,80.0697143,55.6631657
+square_256,okij_ikji_t2x64x32_p1_u1,77.463892,55.2762842
+square_256,oijk_ijki_t4x256x8_p1_u4,87.4579828,82.9164665
+square_256,oijk_iikj_t16x32x8_p0_u1,77.7679312,81.1265103
+square_256,ojki_ikji_t2x64x32_p1_u1,78.1015615,52.9981141
+square_256,oijk_iikj_t64x32x8_p0_u1,83.4591873,69.7010802
+square_256,oikj_ijki_t4x64x8_p1_u4,85.7564289,76.2619554
+square_256,oikj_ijki_t4x64x8_p0_u1,74.2265453,69.2209467
+mbv2_pw_expand_14,ojik_ikji_t4x32x8_p1_u1,79.8392984,56.2236785
+mbv2_pw_expand_14,oikj_ijik_t4x16x8_p0_u1,80.5694038,63.6363691
+mbv2_pw_expand_14,ojki_ikij_t1x32x8_p0_u1,78.2460626,74.8419864
+mbv2_pw_expand_14,ojki_ikji_t2x64x32_p1_u4,77.0948622,54.3239887
+mbv2_pw_expand_14,oikj_ijki_t4x32x8_p1_u4,75.269768,82.4018844
+mbv2_pw_expand_14,ojki_iikj_t1x32x8_p0_u1,76.9681576,77.240087
+mbv2_pw_expand_14,okji_ikji_t2x64x16_p1_u1,73.938755,54.3870947
+mbv2_pw_expand_14,ojik_ikji_t4x32x16_p1_u4,80.6548099,57.3039555

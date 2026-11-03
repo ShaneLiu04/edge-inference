@@ -1,0 +1,5 @@
+kind,wmax,columns,K,wrong,wrong_frac,worst_abs_err
+saturate,63,4096,256,0,0,0
+saturate,64,4096,256,0,0,0
+saturate,100,4096,256,4053,0.989501953,43326
+saturate,127,4096,256,4096,1,111688
