@@ -7,8 +7,8 @@
 | 检查 | 命令 | 结果 |
 | --- | --- | --- |
 | 笔记结构（16 节、元数据、公式块、追问链）、到 mlsys-infra 笔记的链接、索引、术语 | `python notes/check_notes.py` | 8 讲通过 |
-| 全部测试，AVX-512 + VNNI | `./scripts/run-all-tests.ps1` | 9 套全部 PASS，130 个测试 |
-| 全部测试，无 AVX-512 的回退路径 | `$env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1` | 9 套全部 PASS，130 个测试 |
+| 全部测试，AVX-512 + VNNI | `./scripts/run-all-tests.ps1` | 10 套全部 PASS，135 个测试 |
+| 全部测试，无 AVX-512 的回退路径 | `$env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1` | 10 套全部 PASS，135 个测试 |
 | README 与笔记里的关键数字对照 `artifacts/raw/` | `python scripts/check_claims.py` | 90 条全部吻合 |
 | Markdown 相对链接、实验目录结构、claims、密钥扫描 | `./scripts/check-repo.ps1` | 通过，8 个实验 |
 | 代码风格 | `python -m ruff check .` | 通过 |

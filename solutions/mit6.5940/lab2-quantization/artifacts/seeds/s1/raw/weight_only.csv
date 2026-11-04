@@ -1,0 +1,10 @@
+w_bits,granularity,acc
+8,per_channel,0.8832
+8,per_tensor,0.883
+8,per_channel_but_depthwise_per_tensor,0.8825
+6,per_channel,0.8816
+6,per_tensor,0.8764
+6,per_channel_but_depthwise_per_tensor,0.8771
+4,per_channel,0.8606
+4,per_tensor,0.7198
+4,per_channel_but_depthwise_per_tensor,0.8442

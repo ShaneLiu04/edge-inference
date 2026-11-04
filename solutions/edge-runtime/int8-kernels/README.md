@@ -15,6 +15,8 @@ C++ kernel（`cpp/int8.cpp`）、ONNX Runtime 的 `QLinearConv` 三方逐元素�
 - **布局比指令重要**：VNNI 打包（[N/16][K/4][16][4]）比逐点积 VNNI 快 2.0–30.8 倍；K = 24 时差最大。
 - **requant 要融合**：单独的标量 epilogue 把打包 GEMM 从 129 拖到 20 GOP/s，融合进寄存器后 66；融合比标量 epilogue 快 1.2–3.5 倍。
 - **ORT int8 对 fp32**：1 线程 1.39–3.08 倍；4 线程 0.76–2.14 倍，depthwise 上 int8 反而更慢。
+- **AMX 只在 K 填得满 tile 时赢**（Xeon 8470Q）：512³ 上 AMX tile 1704 GOP/s，是 VNNI 打包 563 的 3.0 倍；LLM prefill（256×4096×4096）上 5.9 倍；
+  K = 24 的 MBv2 expand 被补到 64，162 对 270，AMX 反而慢。GEMM 变快后 requant 占比上升：AMX + SIMD requant 在 512³ 上掉到 969（−43%）。
 
 ## 怎么跑
 
@@ -95,6 +97,43 @@ python scripts/run_experiments.py --only gemm ort               # 计时，约 2
 | conv3x3_28 | 457 | 148 | 3.08 | 185 | 97 | 1.91 |
 
 4 线程时每层只有 100–250 µs，线程派发与同步开销占了主导；depthwise 的 int8 kernel 多线程扩展反而比 fp32 差。
+
+### 服务器复现：Xeon 8470Q（Sapphire Rapids）与 AMX
+
+同一份代码在 AutoDL 服务器上重跑（绑 NUMA1 的物理核，GCC 11.4，`artifacts/raw/xeon8470q/`，图 `artifacts/figures/xeon8470q/`），
+并新增 AMX 路径：`gemm_u8s8_amx` 用 `arch_prctl(ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA)` 申请 tile 状态，
+配置 8 个 16 行 × 64 字节的 tile，2×2 输出块（tmm0–3 累加，tmm4–5 读 A，tmm6–7 读 VNNI 打包后的 B），`_tile_dpbusd` 做 u8 × s8 → int32；
+K 不足 64 的部分在打包时补零（`pack_vnni(..., kb_pad)`）。另加一个 LLM prefill 形状 256×4096×4096。单位 GOP/s，1 线程：
+
+| 形状 | fp32 | int8 标量 | VNNI 点积 | VNNI 打包 | 打包 + 融合 requant | **AMX tile** | AMX + SIMD requant |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| pw_expand_56（K=24） | 71.2 | 8.5 | 6.9 | 270.2 | 102.3 | 162.4 | 72.3 |
+| pw_project_56（K=144） | 60.4 | 22.3 | 50.8 | 431.7 | 254.5 | 887.6 | 330.8 |
+| pw_expand_14（K=96） | 85.3 | 19.6 | 35.5 | 476.9 | 268.3 | 693.7 | 296.0 |
+| pw_project_14（K=576） | 82.3 | 20.2 | 215.4 | 621.7 | 519.3 | 1894.6 | 1140.5 |
+| pw_head_7（K=320） | 56.6 | 20.0 | 172.5 | 514.0 | 405.4 | 1208.2 | 701.0 |
+| square_512 | 75.2 | 20.0 | 205.5 | 562.8 | 483.1 | 1703.6 | 968.9 |
+| llm_prefill 256×4096×4096 | 18.4 | 19.9 | 230.2 | 280.1 | 280.3 | 1658.7 | 1453.1 |
+
+全部输出与参考逐位相等。读法：
+
+- **AMX 的收益 ∝ K 的填充率。** tile 一次吃 K = 64 字节；K = 24 时 62.5% 的乘加作用在补零上，AMX 只有 VNNI 的 0.6 倍；K ≥ 144 时 2.1–5.9 倍。
+  按 2048 int8 op/cycle/核与 2.1 GHz 基频估算单核 AMX 峰值约 4.3 TOP/s，1.9 TOP/s 是其 44%：2×2 块每次只复用 A/B 各 2 次，tile load 仍占不少时间。
+- **prefill 形状上 VNNI 打包也只有 280**：它的外层循环每 4 行 A 就把整个 B（4096×4096 = 16 MiB，超出 2 MiB L2）扫一遍，共 64 遍，B 一直从 L3 流入；
+  AMX 每 32 行扫一遍 B，只有 8 遍，于是同一形状上快 5.9 倍。两者都没有 K/N 方向的 cache 分块——这正是 oneDNN 类库要做的下一步。
+  fp32 版本 64 MiB 的权重连 L3 也装不下一半，跌到 18 GFLOP/s。
+- **epilogue 的份额随 GEMM 变快而上升（Amdahl）。** 本地 VNNI 打包时 SIMD requant 只损失 12%（212 → 186），AMX 时损失 43%（1704 → 969）。
+  要保住 AMX 的收益，requant 必须融合进 tile store 之后的寄存器阶段，而不是单独再扫一遍 int32 累加器。
+
+![amx vs k](artifacts/figures/xeon8470q/amx_vs_k.png)
+
+左图的虚线是只考虑「K 向上补齐到 64 的倍数」的上界，按 512³ 实测比值缩放：K 刚过 64 的整数倍时，补零浪费最大，曲线跳水，形成锯齿。
+实测点都在上界之下或附近，K = 24（MobileNetV2 的 1×1 expand）低于 1，说明对小通道数的端侧模型，AMX 路径必须按层回退到 VNNI。
+prefill 点远高于上界，因为那里的差距来自 B 的重复流入次数（上一条），已不是 tile 填充问题。
+右图是同一组形状在服务器上的 epilogue 损失：VNNI 列随 K 增大而下降（GEMM 变重，requant 摊薄），AMX 列在 K = 144–576 维持在 40% 左右。
+- **标量循环在 GCC 11 下只有 20 GOP/s**（本地 GCC 13 是 100）：汇编计数显示 GCC 13 多出 18 条 `vpdpbusd`，把标量点积自动识别成了 VNNI；GCC 11 只能先把字节扩成 16 位。
+
+ORT 1 线程 int8 对 fp32 加速 1.28–3.38 倍（本地 1.39–3.08），4 线程 0.57–1.61 倍，结论不变；跨主机全表见 [CROSS-HOST](../../../interview/CROSS-HOST.md)。
 
 ## 和原课程的差异
 

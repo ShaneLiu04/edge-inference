@@ -1,0 +1,15 @@
+$ /root/autodl-tmp/llama.cpp/build-cuda/bin/llama-perplexity -m /root/autodl-tmp/gguf/qwen2.5-7b-f16.gguf -f /root/autodl-tmp/gguf/wiki.test.raw -ngl 99 --chunks 80 --kl-divergence-base /root/gguf_q/f16.kld
+# rc=0 15.3s
+0.18 minutes
+[1]5.3877,[2]6.9912,[3]5.7919,[4]5.4902,[5]5.3799,[6]5.4065,[7]5.4012,[8]5.5738,[9]5.6147,[10]5.8250,[11]5.7120,[12]5.9355,[13]6.1897,[14]6.1215,[15]6.1471,[16]6.3683,[17]6.0862,[18]6.2025,[19]6.2182,[20]6.2358,[21]6.1237,[22]6.1809,[23]5.9936,[24]5.7685,[25]5.6364,[26]5.5241,[27]5.3874,[28]5.3287,[29]5.4121,[30]5.3782,[31]5.3745,[32]5.4068,[33]5.3696,[34]5.4063,[35]5.4707,[36]5.5727,[37]5.6651,[38]5.7244,[39]5.7127,[40]5.7790,[41]5.8039,[42]5.8062,[43]5.8417,[44]5.8334,[45]5.8454,[46]5.8589,[47]5.9779,[48]6.0557,[49]6.0539,[50]6.0970,[51]6.1163,[52]6.1465,[53]6.1977,[54]6.2558,[55]6.2680,[56]6.3219,[57]6.3092,[58]6.3251,[59]6.3568,[60]6.3861,[61]6.4006,[62]6.4239,[63]6.4835,[64]6.5150,[65]6.5652,[66]6.6146,[67]6.6741,[68]6.6665,[69]6.6768,[70]6.6580,[71]6.6775,[72]6.7228,[73]6.7583,[74]6.7793,[75]6.7556,[76]6.7616,[77]6.8068,[78]6.8400,[79]6.8036,[80]6.7913,
+
+
+0.00.597.950 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.02.722.978 I cmn          init: llama threadpool init, n_threads = 104
+0.02.773.421 I 
+0.02.773.546 I system_info: n_threads = 104 (n_threads_batch = 104) / 208 | CUDA : ARCHS = 1200 | USE_GRAPHS = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16 | BLACKWELL_NATIVE_FP4 = 1 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | AVX512 = 1 | AVX512_VBMI = 1 | AVX512_VNNI = 1 | AVX512_BF16 = 1 | AMX_INT8 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.02.773.658 I perplexity: saving all logits to /root/gguf_q/f16.kld
+0.02.773.665 I perplexity: tokenizing the input ..
+0.03.343.475 I perplexity: tokenization took 569.781 ms
+0.03.343.692 I perplexity: calculating perplexity over 80 chunks, n_ctx=512, batch_size=2048, n_seq=4
+0.03.986.894 I perplexity: 0.58 seconds per pass - ETA 0.14.892.473 I Final estimate: PPL = 6.7913 +/- 0.11566

@@ -1,4 +1,4 @@
-"""Train MicroMobileNetV2 on CIFAR-10 on the CPU.
+"""Train MicroMobileNetV2 on CIFAR-10 (CPU by default; --device cuda for the multi-seed runs).
 
 Writes the checkpoint to ``checkpoints/micronet.pt`` (not committed) and the
 per-epoch log to ``artifacts/raw/train_log.jsonl``. The quantization
@@ -61,7 +61,12 @@ def main() -> None:
     # 4 physical cores; 8 threads oversubscribe the hyperthreads and run 15x slower.
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
+    # Augmentation stays on the CPU generator, so a seed draws the same crops and flips on either device.
+    parser.add_argument("--device", default="cpu")
+    parser.add_argument("--ckpt", type=Path, default=CKPT)
+    parser.add_argument("--log", type=Path, default=LAB / "artifacts" / "raw" / "train_log.jsonl")
     args = parser.parse_args()
+    dev = torch.device(args.device)
 
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
@@ -69,17 +74,17 @@ def main() -> None:
     xtr, ytr, xte, yte = load_cifar10()
     xtr_t = torch.from_numpy(normalize(xtr))
     ytr_t = torch.from_numpy(ytr)
-    xte_t = torch.from_numpy(normalize(xte))
-    yte_t = torch.from_numpy(yte)
+    xte_t = torch.from_numpy(normalize(xte)).to(dev)
+    yte_t = torch.from_numpy(yte).to(dev)
 
-    model = MicroMobileNetV2()
+    model = MicroMobileNetV2().to(dev)
     steps_per_epoch = len(xtr_t) // args.batch
     opt = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=4e-5, nesterov=True)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, epochs=args.epochs,
                                                 steps_per_epoch=steps_per_epoch, pct_start=0.15)
-    log = JsonlWriter(LAB / "artifacts" / "raw" / "train_log.jsonl", cwd=REPO)
+    log = JsonlWriter(args.log, cwd=REPO)
     log.write({"kind": "model", "params": count_params(model), "macs": count_macs(model),
-               "epochs": args.epochs, "batch": args.batch, "lr": args.lr, "seed": args.seed})
+               "epochs": args.epochs, "batch": args.batch, "lr": args.lr, "seed": args.seed, "device": args.device})
     t_start = time.perf_counter()
     for epoch in range(args.epochs):
         model.train()
@@ -87,8 +92,8 @@ def main() -> None:
         total, t0 = 0.0, time.perf_counter()
         for step in range(steps_per_epoch):
             idx = perm[step * args.batch:(step + 1) * args.batch]
-            xb = augment(xtr_t[idx], gen)
-            loss = F.cross_entropy(model(xb), ytr_t[idx], label_smoothing=0.1)
+            xb = augment(xtr_t[idx], gen).to(dev, non_blocking=True)
+            loss = F.cross_entropy(model(xb), ytr_t[idx].to(dev), label_smoothing=0.1)
             opt.zero_grad(set_to_none=True)
             loss.backward()
             opt.step()
@@ -99,11 +104,11 @@ def main() -> None:
                "epoch_s": time.perf_counter() - t0}
         log.write(row)
         print(row, flush=True)
-    CKPT.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(model.state_dict(), CKPT)
+    args.ckpt.parent.mkdir(parents=True, exist_ok=True)
+    torch.save({k: v.cpu() for k, v in model.state_dict().items()}, args.ckpt)
     log.write({"kind": "final", "test_acc": acc, "train_s": time.perf_counter() - t_start})
     log.close()
-    print(f"saved {CKPT}")
+    print(f"saved {args.ckpt}")
 
 
 if __name__ == "__main__":

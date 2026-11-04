@@ -206,6 +206,9 @@ inline std::string isa() {
 #if defined(__AVX512VNNI__)
     s += "avx512vnni ";
 #endif
+#if defined(__AMX_INT8__)
+    s += "amx-int8 ";
+#endif
 #if defined(__AVX2__)
     s += "avx2 ";
 #endif

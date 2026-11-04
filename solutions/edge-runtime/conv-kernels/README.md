@@ -70,6 +70,24 @@ python scripts/run_experiments.py --only bench              # 计时，约 25 s�
 
 int8 输入经 F(2,3) 变换后最大 4 × 127 = 508（10 bit），F(4,3) 是 15 bit：逐点乘必须 int16，这是 CMSIS-NN / TFLite Micro 不提供 int8 Winograd 的原因。
 
+### 服务器复现：Xeon 8470Q（`artifacts/raw/xeon8470q/`）
+
+同一份代码、1 线程、GCC 11.4，绑 NUMA1 物理核。单位 GFLOP/s：
+
+| 层 | implicit GEMM 本地 → 服务器 | Winograd F(2,3) 本地 → 服务器 | Winograd / implicit（服务器） |
+| --- | ---: | ---: | ---: |
+| ResNet 3×3 56² | 34.3 → 80.4 | 39.7 → 54.3 | 0.68 |
+| ResNet 3×3 14² | 34.9 → 48.2 | 75.0 → 144.5 | 3.00 |
+
+| 层 | 朴素 NCHW | CHW 通用 depthwise | NHWC SIMD depthwise |
+| --- | ---: | ---: | ---: |
+| depthwise 56²（服务器） | 1.98 | 2.07 | 17.0 |
+| depthwise 56²（本地） | 1.02 | 1.20 | 10.8 |
+
+- **Winograd 是否划算取决于 GEMM 有多快。** 服务器上 implicit GEMM 快了 2.3 倍，Winograd 的输入/输出变换（逐 tile 的加减与散布写）只快 1.4 倍，
+  56² 上 Winograd 反而比 implicit GEMM 慢 32%；14² 时 K = C × 9 较小、GEMM 效率低，Winograd 少做 2.25 倍乘法的优势仍在。
+- depthwise 的布局结论不变：NHWC SIMD 比 CHW 快 8.2 倍（本地 9.0 倍）。全表见 [CROSS-HOST](../../../interview/CROSS-HOST.md)。
+
 ## 和原课程的差异
 
 - TinyEngine 是 int8 的 MCU kernel；这里是 fp32 的 x86 kernel，讲的是同样的布局与工作区问题，速度数字不能搬到 Cortex-M。

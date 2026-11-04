@@ -37,3 +37,20 @@ solutions/**/*.safetensors
 solutions/**/*.onnx
 *.nsys-rep
 *.ncu-rep
+
+# LaTeX intermediates; only .tex, .bib and .pdf are committed (figures are read from the labs' artifacts/figures)
+reports/**/*.aux
+reports/**/*.fls
+reports/**/*.fdb_latexmk
+reports/**/*.xdv
+reports/**/*.out
+reports/**/*.toc
+reports/**/*.lof
+reports/**/*.lot
+reports/**/*.bbl
+reports/**/*.blg
+reports/**/*.synctex.gz
+reports/**/*.run.xml
+reports/**/*-blx.bib
+reports/**/*.log
+solutions/**/artifacts/seeds/*/work/

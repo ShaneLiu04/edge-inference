@@ -13,6 +13,7 @@ LLM 侧同一套问题（逐组 scale、敏感层、GPTQ/AWQ）见 mlsys-infra [
 - **校准器在 A8 上差距 < 0.2 个点**，唯一的例外是 TensorRT 式 KL：63.68%（A6 时 16.30%），因为 ReLU 输出里大量精确零把阈值拉低；去掉精确零后 88.06%。
 - **混合精度按敏感度而不是按大小**：W4 基线 83.04%（98.6 KiB）；按敏感度升 8 层到 W8 → 87.69%（108.1 KiB），按参数量升 8 层 → 83.62%（176.6 KiB）。
 - **QAT 3 个 epoch** 把 W4A8 从 83.04 拉回 87.63%，每个 epoch 约 110 s。
+- **五个种子复现**：KL 崩溃（−24.6 ± 2.4 个点）、按敏感度混合精度（−0.63 对按大小 −2.05）、QAT（−0.19）都在 95% 置信区间里成立；最敏感的层随种子变化。
 - **ONNX Runtime 1.31**：int8 QDQ 88.09%，单线程延迟 372.4 → 253.9 µs（1.47 倍），文件 824 → 319 KiB；Entropy 默认参数与 MinMax 结果相同，改成 2048 bin 后掉到 87.17%。
 
 ## 怎么跑
@@ -90,6 +91,69 @@ depthwise 层每个输出通道只有 9 个权重，通道间范围差异最大�
 
 ORT 的 QDQ 模型经过图融合后变成 QLinearConv；它的 requant 语义（浮点乘、四舍六入五成双）在 [int8-kernels](../../edge-runtime/int8-kernels/README.md) 里逐位验证过。
 
+**五个种子上的 ORT**（服务器 CPU，每个种子绑 4 个核、ORT 1 线程，`artifacts/seeds/s*/raw/ort_ptq.csv`）：
+
+| 模型 | 配对差（点） | 95% CI |
+| --- | ---: | ---: |
+| int8 QDQ MinMax | +0.01 | ±0.07 |
+| int8 QDQ Entropy（默认） | +0.01 | ±0.07 |
+| int8 QDQ Entropy 2048 bin | −0.82 | ±0.10 |
+| int8 QDQ Percentile | +0.04 | ±0.06 |
+
+- **ORT 默认的 Entropy 就是 MinMax**：5 个种子里两者的精度逐位相同。看 `onnxruntime/quantization/calibrate.py`：`EntropyCalibrater` 默认
+  `num_bins=128, num_quantized_bins=128`，阈值搜索 `for i in range(num_quantized_bins // 2, num_bins // 2 + 1)` 只有一个候选——全范围。
+  「用了 KL 校准、没掉点」的结论在 ORT 默认参数下什么也没验证；要真的做 KL 搜索得把 `num_bins` 调大。
+- **调到 2048 bin 才是 TensorRT 式搜索，掉 0.82 个点，远小于本仓库实现的 24.6**：ORT 的直方图覆盖 [−max, max]，零点在正中间的 bin，
+  候选区间以它为中心对称扩展，ReLU6 的零峰永远在切片内部，不会像 [0, max] 直方图那样成为第一个 bin、在合并时主导 KL。
+  剩下 0.82 个点来自哪几层没有逐层定位。
+- **延迟不可比**：int8 的单次测量在 120 µs 和 175 µs 两档之间跳（fp32 稳定在 201–204 µs），5 个种子同时在跑、cgroup 配额被挤满。
+  快的一档相对 fp32 是 1.65 倍，和本机单线程的 1.47 倍同量级；延迟结论以本机安静环境的表为准。
+
+### 五个种子：哪些结论经得起重训
+
+单次训练里 0.1 个点的差距落在评测噪声里。为了区分「方法差异」和「这一次训练的运气」，在 RTX 6000D 上用同样的超参数重训 5 个种子
+（`train.py --device cuda --seed s`，每个 156 s），再在服务器 CPU 上对每个模型并行跑一遍全部实验（每个种子 4 线程；ORT 部分单独重跑，结果见上一节）。
+fp32 精度 88.32 / 88.28 / 88.16 / 87.99 / 87.91%，均值 88.12 ± 0.18%。
+
+每个量化方法都报告**配对差** acc(方法) − acc(同一种子的 fp32)：种子之间约 0.2 个点的 fp32 波动在配对差里抵消，
+所以比 0.2 个点更小的方法差异也能分辨。`artifacts/raw/seeds/seed_summary.csv`，95% 置信区间用 t 分布（n = 5，t = 2.776）：
+
+| 方法 | 精度均值 | 配对差（点） | 95% CI |
+| --- | ---: | ---: | ---: |
+| W8A8 minmax | 88.16 | +0.03 | ±0.06 |
+| W8A8 MSE | 88.13 | +0.01 | ±0.08 |
+| **W8A8 KL（TensorRT 式）** | **63.57** | **−24.55** | ±2.42 |
+| W8A8 KL 去零 bin | 88.07 | −0.05 | ±0.08 |
+| W8A6 KL | 18.26 | −69.86 | ±14.6 |
+| W8A6 KL 去零 bin | 87.88 | −0.25 | ±0.22 |
+| W4 逐张量（只量化权重） | 76.36 | −11.76 | ±4.26 |
+| W4 逐通道 | 85.86 | −2.26 | ±0.26 |
+| W4 逐通道但 depthwise 逐张量 | 82.46 | −5.66 | ±3.41 |
+| 混合精度：按敏感度升 8 层 | 87.50 | −0.63 | ±0.29 |
+| 混合精度：按参数量升 8 层 | 86.07 | −2.05 | ±0.54 |
+| QAT W4A8，3 epoch | 87.94 | −0.19 | ±0.16 |
+
+![seeds quant](artifacts/figures/seeds_quant.png)
+
+- **KL 的崩溃是结构性的**：5 个种子全部掉到 60.4–65.3%，KL 阈值中位数是 MSE 阈值的 0.267 ± 0.002 倍，几乎不随种子变化——它由 ReLU6 后的精确零决定，不由训练的随机性决定。
+  去掉零 bin 后所有种子都回到 fp32 的 0.1 个点以内。
+- **逐张量 W4 的方差大得多**（±4.3 对逐通道 ±0.3）：逐张量的 scale 由全层最大的通道决定，哪个通道最大取决于这次训练；depthwise 层单独逐张量也一样（±3.4）。
+  粒度不只影响均值，也影响「换一次训练还能不能复现」。
+- **混合精度按敏感度的优势稳定**：同样升 8 层，按敏感度 −0.63 ± 0.29，按大小 −2.05 ± 0.54，区间不重叠，且按敏感度用的存储少 60 KiB（116.5 对 176.6 KiB）。
+  但**最敏感的那一层并不固定**：5 个种子里分别是 stem（2 次）、第一个 depthwise（1 次）、第二个块的 depthwise（2 次）。
+  敏感度排序必须对每个训练出来的模型重新测，不能从别的模型抄。
+- **QAT 的收益可复现**：W4A8 从 −2.31 拉回 −0.19 ± 0.16。
+
+![seeds mixed](artifacts/figures/seeds_mixed.png)
+
+```bash
+python scripts/train.py --device cuda --seed 3 --ckpt checkpoints/seeds/micronet_s3.pt --log artifacts/raw/seeds/train_log_s3.jsonl
+python scripts/run_experiments.py --threads 4 --ckpt checkpoints/seeds/micronet_s3.pt --out artifacts/seeds/s3 \
+    --only baseline ranges weight_only calib kl_points calib_size sensitivity localize mixed qat
+python scripts/run_experiments.py --threads 1 --ckpt checkpoints/seeds/micronet_s3.pt --out artifacts/seeds/s3 --only ort
+python scripts/seed_summary.py      # 汇总 artifacts/seeds/s*/raw → artifacts/raw/seeds/seed_summary.csv 与两张图
+```
+
 ## 和原课程的差异
 
 - 原课程 Lab 2 在 VGG 上做 k-means 量化和线性量化；这里没有 k-means，换成部署链路实际会遇到的四件事：粒度、校准器、逐层定位、ORT 落地。
@@ -97,7 +161,8 @@ ORT 的 QDQ 模型经过图融合后变成 QLinearConv；它的 requant 语义�
 
 ## 这些数字不能推出什么
 
-- 只有一个模型、一个数据集、一次训练（seed 0）；88% 左右的差距 0.1 个点在单次评测的噪声里（1 万张图，标准误约 0.3 个点）。
+- 上面各节的单次数字来自一次训练（CPU，seed 0）；88% 左右 0.1 个点的差距在单次评测的噪声里（1 万张图，标准误约 0.3 个点）。
+  五种子一节把主要结论放进了置信区间，但仍然只有一个模型结构、一个数据集；GPU 训练的 5 个模型与 CPU 训练的 seed 0 不是同一个模型。
 - KL 的失败依赖于「ReLU 后大量精确零」这一分布特征；没有这个特征的网络里 KL 可能正常。
 - ORT 延迟是本机 x86 + VNNI 的单线程数，不代表 ARM 或 MCU 上的 int8 加速比。
 

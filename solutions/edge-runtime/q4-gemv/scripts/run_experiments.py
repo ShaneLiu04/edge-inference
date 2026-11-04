@@ -25,7 +25,7 @@ sys.path[:0] = [str(LAB / "code"), str(ROOT)]
 
 from blockq.pack import QUANTIZERS, bits_per_weight, roundtrip, sqnr_db  # noqa: E402
 from edge_harness import devices  # noqa: E402
-from edge_harness.cpp import build, run_json  # noqa: E402
+from edge_harness.cpp import bench_threads, build, run_json  # noqa: E402
 from edge_harness.writer import JsonlWriter, read_rows, write_csv, write_json  # noqa: E402
 
 RAW = LAB / "artifacts/raw"
@@ -36,7 +36,7 @@ HF = Path(os.environ.get("EDGE_HF_HOME", ROOT / ".data/hf"))
 def bench(repeats: int) -> None:
     exe = build(LAB / "cpp/gemv.cpp", LAB / "cpp/bin", includes=(ROOT / "edge_harness/include",))
     rows = []
-    for t in (1, 4):
+    for t in bench_threads():
         rows += run_json(exe, ["--mode=bench", f"--threads={t}", f"--repeats={repeats}"], timeout=1800)
     with JsonlWriter(RAW / "gemv_bench.jsonl", cwd=ROOT) as w:
         for r in rows:
@@ -48,10 +48,12 @@ def bench(repeats: int) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(11, 3.8))
     for ax, key, label in ((axes[0], "us", "time per GEMV (us)"), (axes[1], "weight_GBps", "weight bytes / time (GB/s)")):
         methods = list(dict.fromkeys(r["method"] for r in rows))
-        for ti, t in enumerate((1, 4)):
+        threads = sorted({r["threads"] for r in rows})
+        width = 0.8 / len(threads)
+        for ti, t in enumerate(threads):
             vals = [next(r[key] for r in rows if r["shape"] == shape and r["method"] == m and r["threads"] == t)
                     for m in methods]
-            ax.bar(np.arange(len(methods)) + ti * 0.4, vals, 0.4, label=f"{t} thread")
+            ax.bar(np.arange(len(methods)) + ti * width, vals, width, label=f"{t} thread")
         ax.set_xticks(np.arange(len(methods)) + 0.2, methods, rotation=25, fontsize=7)
         ax.set_ylabel(label)
         ax.grid(True, axis="y", alpha=0.3)
@@ -152,7 +154,7 @@ def decode_bound() -> None:
                 if d.dram_bw:
                     row[f"{d.slug}_tok_s_bound"] = d.dram_bw / wbytes
             meth = {"fp16": "fp16", "q8_0": "q8_0_x_q8_vnni", "q4_0": "q4_0_x_q8_vnni"}[fmt]
-            for t in (1, 4):
+            for t in sorted({t for _, t in host}):
                 if (meth, t) in host:
                     row[f"host_{t}t_tok_s_at_measured_GBps"] = host[(meth, t)] * 1e9 / wbytes
             out.append(row)

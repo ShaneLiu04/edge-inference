@@ -1,0 +1,10 @@
+{
+  "fp32_acc": 0.8816,
+  "folded_acc": 0.8816,
+  "fold_logit_max_abs_diff": 3.6954879760742188e-06,
+  "params": 209354,
+  "macs": 8571392,
+  "eval_images": 10000,
+  "weight_layers": 26,
+  "act_points": 31
+}

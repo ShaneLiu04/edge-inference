@@ -13,11 +13,12 @@
 | 06 | [mlc/tensor-program-tuning](mlc/tensor-program-tuning/README.md) | Python 生成 C++ | 16 | 搜索 2.4 倍于教科书；代价模型 Spearman 0.47–0.53 |
 | 07 | [edge-runtime/dma-double-buffer](edge-runtime/dma-double-buffer/README.md) | Python / C++ | 11 | depthwise + HyperRAM 效率 0.257；本机实测 0.61–1.23 倍 |
 | 08 | [edge-runtime/q4-gemv](edge-runtime/q4-gemv/README.md) | C++ / Python | 10 | Q4 × Q8 4.6 倍于 fp32；GPT-2 Q4_0 31.88 |
+| 09 | [edge-runtime/llama-cpp-7b](edge-runtime/llama-cpp-7b/README.md) | Python（驱动 llama.cpp） | 5 | Qwen2.5-7B 11 种 GGUF；Q4_K_M 的 KLD 是 Q4_0 的 0.55 倍；AMX 重排 prefill 2.8 倍 |
 
 另有 `tools/tests`（计算器与 harness，15 个测试）。全量：
 
 ```powershell
-./scripts/run-all-tests.ps1            # 9 套，130 个测试
+./scripts/run-all-tests.ps1            # 10 套，135 个测试
 $env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1   # 无 AVX-512 的回退路径
 ```
 

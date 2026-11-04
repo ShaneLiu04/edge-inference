@@ -89,7 +89,7 @@ def count_macs(model: nn.Module, shape=(1, 3, 32, 32)) -> int:
     was_training = model.training
     model.eval()
     with torch.no_grad():
-        model(torch.zeros(shape))
+        model(torch.zeros(shape, device=next(model.parameters()).device))
     model.train(was_training)
     for h in hooks:
         h.remove()

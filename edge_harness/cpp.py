@@ -22,6 +22,12 @@ EXE = ".exe" if os.name == "nt" else ""
 PLATFORM_FLAGS = ("-Wa,-muse-unaligned-vector-move",) if os.name == "nt" else ()
 
 
+def bench_threads(default: tuple[int, ...] = (1, 4)) -> tuple[int, ...]:
+    """Thread counts for a sweep. EDGE_THREADS=1,2,4,8,16 widens it on a bigger host."""
+    env = os.environ.get("EDGE_THREADS", "").strip()
+    return tuple(int(t) for t in env.split(",")) if env else default
+
+
 class BuildError(RuntimeError):
     pass
 

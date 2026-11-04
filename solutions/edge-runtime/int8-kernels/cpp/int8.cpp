@@ -288,8 +288,9 @@ static void gemm_u8s8_vnni(int M, int N, int K, const uint8_t* X, const int8_t* 
 
 // oneDNN-style packing for VNNI: [N/16][K/4][16 columns][4 k]. One 32-bit broadcast of x[k..k+3]
 // times one 64-byte weight load gives 16 output columns, so there is no horizontal reduction.
-static std::vector<int8_t> pack_vnni(int N, int K, const int8_t* Wnk) {
-    int nb = (N + 15) / 16, kb = (K + 3) / 4;
+// kb_pad > (K + 3) / 4 zero-pads K, which AMX needs: one B tile covers 64 k.
+static std::vector<int8_t> pack_vnni(int N, int K, const int8_t* Wnk, int kb_pad = 0) {
+    int nb = (N + 15) / 16, kb = std::max(kb_pad, (K + 3) / 4);
     std::vector<int8_t> p(static_cast<size_t>(nb) * kb * 64, 0);
     for (int n = 0; n < N; ++n)
         for (int k = 0; k < K; ++k)
@@ -409,6 +410,66 @@ static void gemm_u8s8_vnni_packed(int M, int N, int K, const uint8_t* X, int ldx
 }
 #endif
 
+#if defined(__AMX_INT8__) && defined(__AMX_TILE__) && defined(__linux__)
+#define EDGE_HAVE_AMX 1
+#include <sys/syscall.h>
+#include <unistd.h>
+// Linux hands out the 8 KB tile state only after ARCH_REQ_XCOMP_PERM for XTILEDATA (feature 18).
+static bool amx_enable() {
+    static int ok = -1;
+    if (ok < 0) ok = syscall(SYS_arch_prctl, 0x1023, 18) == 0;
+    return ok == 1;
+}
+
+struct alignas(64) TileCfg {
+    uint8_t palette = 1, start_row = 0, reserved[14] = {};
+    uint16_t colsb[16] = {};
+    uint8_t rows[16] = {};
+};
+
+// One tdpbusd: C[16 x 16 int32] += A[16 rows x 64 u8] . B[16 k-quads x (16 cols x 4 s8)].
+// B is exactly one 16-column block of pack_vnni over 64 consecutive k, so the VNNI packing is reused.
+// 2 x 2 register block: tmm0-3 accumulate, tmm4-5 hold A, tmm6-7 hold B.
+// X: rows padded to a multiple of 32 and ldx a multiple of 64, zero filled. kbp: k-quads, multiple of 16.
+static void gemm_u8s8_amx(int M, int N, const uint8_t* X, int ldx, const int8_t* Wp, int kbp, int32_t* Acc) {
+    TileCfg cfg;
+    for (int t = 0; t < 8; ++t) { cfg.rows[t] = 16; cfg.colsb[t] = 64; }
+    _tile_loadconfig(&cfg);
+    alignas(64) int32_t tmp[16 * 16];
+    int nb = (N + 15) / 16;
+    auto spill = [&](int i0, int jb) {
+        if (jb >= nb) return;
+        for (int r = 0; r < 16 && i0 + r < M; ++r)
+            for (int c = 0; c < 16 && jb * 16 + c < N; ++c)
+                Acc[static_cast<size_t>(i0 + r) * N + jb * 16 + c] = tmp[r * 16 + c];
+    };
+    for (int i = 0; i < M; i += 32) {
+        for (int jb = 0; jb < nb; jb += 2) {
+            int jb1 = std::min(jb + 1, nb - 1);
+            _tile_zero(0); _tile_zero(1); _tile_zero(2); _tile_zero(3);
+            for (int kq = 0; kq < kbp; kq += 16) {
+                const uint8_t* a = X + static_cast<size_t>(i) * ldx + kq * 4;
+                _tile_loadd(4, a, ldx);
+                _tile_loadd(5, a + static_cast<size_t>(16) * ldx, ldx);
+                _tile_loadd(6, Wp + (static_cast<size_t>(jb) * kbp + kq) * 64, 64);
+                _tile_loadd(7, Wp + (static_cast<size_t>(jb1) * kbp + kq) * 64, 64);
+                _tile_dpbusd(0, 4, 6);
+                _tile_dpbusd(1, 4, 7);
+                _tile_dpbusd(2, 5, 6);
+                _tile_dpbusd(3, 5, 7);
+            }
+            _tile_stored(0, tmp, 64); spill(i, jb);
+            _tile_stored(2, tmp, 64); spill(i + 16, jb);
+            if (jb + 1 < nb) {
+                _tile_stored(1, tmp, 64); spill(i, jb + 1);
+                _tile_stored(3, tmp, 64); spill(i + 16, jb + 1);
+            }
+        }
+    }
+    _tile_release();
+}
+#endif
+
 // Zero-point correction and requantization, the epilogue every int8 GEMM needs.
 static void epilogue(int M, int N, const int32_t* Acc, const int32_t* col_term, const FixedMul* fm, int zy, uint8_t* Y) {
     for (int i = 0; i < M; ++i)
@@ -427,6 +488,8 @@ static void bench(int repeats) {
         {"mbv2_pw_project_14", 14 * 14, 96, 576},
         {"mbv2_pw_head_7", 7 * 7, 1280, 320},
         {"square_512", 512, 512, 512},
+        // A 7B attention projection at prefill: K is large enough for AMX tiles to be full.
+        {"llm_prefill_256x4096x4096", 256, 4096, 4096},
     };
     for (const Shape& s : shapes) {
         std::srand(5);
@@ -478,6 +541,21 @@ static void bench(int repeats) {
             epilogue_avx512(s.M, s.N, acc.data(), soa, yq.data()); }, 2});
         runs.push_back({"int8_vnni_packed_fused_requant", [&] {
             gemm_u8s8_vnni_packed<true>(s.M, s.N, s.K, xpad.data(), ldx, wp.data(), nullptr, &soa, yq.data()); }, 2});
+#endif
+#if defined(EDGE_HAVE_AMX)
+        int kbp = (s.K + 63) / 64 * 16, ldxa = kbp * 4, mpad = (s.M + 31) / 32 * 32;
+        Buffer<uint8_t> xamx(static_cast<size_t>(mpad) * ldxa);
+        std::fill(xamx.ptr, xamx.ptr + xamx.n, 0);
+        for (int i = 0; i < s.M; ++i)
+            std::memcpy(xamx.ptr + static_cast<size_t>(i) * ldxa, xq.ptr + static_cast<size_t>(i) * s.K, s.K);
+        std::vector<int8_t> wamx = pack_vnni(s.N, s.K, wq.data(), kbp);
+        if (amx_enable()) {
+            runs.push_back({"int8_amx_tile", [&, kbp, ldxa] {
+                gemm_u8s8_amx(s.M, s.N, xamx.data(), ldxa, wamx.data(), kbp, acc.data()); }, 1});
+            runs.push_back({"int8_amx_tile+simd_requant", [&, kbp, ldxa] {
+                gemm_u8s8_amx(s.M, s.N, xamx.data(), ldxa, wamx.data(), kbp, acc.data());
+                epilogue_avx512(s.M, s.N, acc.data(), soa, yq.data()); }, 2});
+        }
 #endif
         for (Run& r : runs) {
             Stats st = time_fn(r.fn, 2, repeats, 2e-2);

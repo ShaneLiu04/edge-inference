@@ -1,0 +1,212 @@
+{
+  "t1": {
+    "levels": [
+      {
+        "name": "L1",
+        "lo_bytes": 16384,
+        "hi_bytes": 524288,
+        "gbps": 190.4653255
+      },
+      {
+        "name": "L2",
+        "lo_bytes": 1048576,
+        "hi_bytes": 1048576,
+        "gbps": 78.4298636
+      },
+      {
+        "name": "L3",
+        "lo_bytes": 2097152,
+        "hi_bytes": 33554432,
+        "gbps": 39.6482784
+      },
+      {
+        "name": "DRAM",
+        "lo_bytes": 67108864,
+        "hi_bytes": 2147483648,
+        "gbps": 17.558534
+      }
+    ],
+    "dram_read_gbps": 17.4625897,
+    "l1_read_gbps": 276.991608,
+    "triad_dram_gbps": 19.8543914,
+    "fp32_gflops": 231.977418,
+    "int8_gops": 617.154639,
+    "fp32_ridge": 13.28425061719225,
+    "int8_ridge": 35.34153007099514,
+    "int8_over_fp32": 2.660408260083315
+  },
+  "t2": {
+    "levels": [
+      {
+        "name": "L1",
+        "lo_bytes": 16384,
+        "hi_bytes": 131072,
+        "gbps": 548.360431
+      },
+      {
+        "name": "L2",
+        "lo_bytes": 262144,
+        "hi_bytes": 2097152,
+        "gbps": 357.348513
+      },
+      {
+        "name": "L3",
+        "lo_bytes": 4194304,
+        "hi_bytes": 4194304,
+        "gbps": 127.414615
+      },
+      {
+        "name": "level3",
+        "lo_bytes": 8388608,
+        "hi_bytes": 67108864,
+        "gbps": 64.24249725
+      },
+      {
+        "name": "DRAM",
+        "lo_bytes": 134217728,
+        "hi_bytes": 2147483648,
+        "gbps": 33.602744
+      }
+    ],
+    "dram_read_gbps": 33.3716001,
+    "l1_read_gbps": 554.611286,
+    "triad_dram_gbps": 37.0828484,
+    "fp32_gflops": 375.230473,
+    "int8_gops": 1175.57101,
+    "fp32_ridge": 11.244006037337119,
+    "int8_ridge": 35.22668995425244,
+    "int8_over_fp32": 3.132930544263125
+  },
+  "t4": {
+    "levels": [
+      {
+        "name": "L1",
+        "lo_bytes": 16384,
+        "hi_bytes": 131072,
+        "gbps": 1033.155425
+      },
+      {
+        "name": "L2",
+        "lo_bytes": 262144,
+        "hi_bytes": 1048576,
+        "gbps": 679.360113
+      },
+      {
+        "name": "L3",
+        "lo_bytes": 2097152,
+        "hi_bytes": 4194304,
+        "gbps": 216.3462585
+      },
+      {
+        "name": "level3",
+        "lo_bytes": 8388608,
+        "hi_bytes": 33554432,
+        "gbps": 130.66047
+      },
+      {
+        "name": "DRAM",
+        "lo_bytes": 67108864,
+        "hi_bytes": 2147483648,
+        "gbps": 66.94584775000001
+      }
+    ],
+    "dram_read_gbps": 66.5927745,
+    "l1_read_gbps": 1045.48182,
+    "triad_dram_gbps": 72.3245379,
+    "fp32_gflops": 939.335243,
+    "int8_gops": 2456.95,
+    "fp32_ridge": 14.105663115147724,
+    "int8_ridge": 36.89514393186906,
+    "int8_over_fp32": 2.615626336081164
+  },
+  "t8": {
+    "levels": [
+      {
+        "name": "L1",
+        "lo_bytes": 16384,
+        "hi_bytes": 2097152,
+        "gbps": 1990.304995
+      },
+      {
+        "name": "L2",
+        "lo_bytes": 4194304,
+        "hi_bytes": 8388608,
+        "gbps": 1110.5622899999998
+      },
+      {
+        "name": "L3",
+        "lo_bytes": 16777216,
+        "hi_bytes": 33554432,
+        "gbps": 276.15815899999996
+      },
+      {
+        "name": "DRAM",
+        "lo_bytes": 67108864,
+        "hi_bytes": 2147483648,
+        "gbps": 124.331377
+      }
+    ],
+    "dram_read_gbps": 120.6164,
+    "l1_read_gbps": 2310.73189,
+    "triad_dram_gbps": 112.732403,
+    "fp32_gflops": 1712.02439,
+    "int8_gops": 4806.46191,
+    "fp32_ridge": 14.193960274058918,
+    "int8_ridge": 39.84915741142996,
+    "int8_over_fp32": 2.807472801249052
+  },
+  "t16": {
+    "levels": [
+      {
+        "name": "L1",
+        "lo_bytes": 16384,
+        "hi_bytes": 8388608,
+        "gbps": 3233.63625
+      },
+      {
+        "name": "L2",
+        "lo_bytes": 16777216,
+        "hi_bytes": 16777216,
+        "gbps": 1488.23402
+      },
+      {
+        "name": "L3",
+        "lo_bytes": 33554432,
+        "hi_bytes": 33554432,
+        "gbps": 706.613757
+      },
+      {
+        "name": "DRAM",
+        "lo_bytes": 67108864,
+        "hi_bytes": 2147483648,
+        "gbps": 204.2474635
+      }
+    ],
+    "dram_read_gbps": 193.479467,
+    "l1_read_gbps": 3514.52093,
+    "triad_dram_gbps": 157.819079,
+    "fp32_gflops": 3167.22867,
+    "int8_gops": 9208.20196,
+    "fp32_ridge": 16.36984388632826,
+    "int8_ridge": 47.59265726114493,
+    "int8_over_fp32": 2.907337271609126
+  },
+  "edge_devices": [
+    {
+      "slug": "nrf52840",
+      "dram_gbps": null
+    },
+    {
+      "slug": "stm32h747",
+      "dram_gbps": null
+    },
+    {
+      "slug": "pi5",
+      "dram_gbps": 17.068
+    },
+    {
+      "slug": "orin-nano-8g",
+      "dram_gbps": 68.0
+    }
+  ]
+}

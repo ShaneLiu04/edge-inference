@@ -45,6 +45,25 @@
 
 机器边界：虚拟机里没有性能计数器，端口压力、缓存命中都是推算；时钟按 fp32 峰值反推约 2.42 GHz（系统报告 2.8 GHz）。后台服务偶尔占一个核，计时前要确认空闲。
 
+## 服务器实测（Xeon 8470Q + RTX 6000D）
+
+同一份代码在 AutoDL 服务器上重跑，全表见 [CROSS-HOST](CROSS-HOST.md)，分析见 [`reports/edge-runtime-server`](../reports/edge-runtime-server/edge_runtime_server_report.pdf)。
+`claims.json` 中 `srv-*`、`gpu-*` 条目校验。
+
+| 量 | 数 | 和本地比 |
+| --- | --- | --- |
+| 1 线程 DRAM 只读 | 17.5 GB/s | 只高 1.30 倍：单核带宽受延迟限制，不随「服务器更强」上涨 |
+| 16 线程 DRAM 只读 | 193.5 GB/s | 单插槽 8 × DDR5-4800 理论 307 的 63%，8 → 16 线程只涨 1.6 倍 |
+| fp32 FMA 1 / 16 线程 | 232 / 3167 GFLOP/s | 反推单核 3.6 GHz、16 核 3.1 GHz |
+| 拐点 1 → 16 线程 | 13.3 → 16.4 FLOP/B | 算力扩展快于带宽，多核让更多层变成带宽受限 |
+| AMX int8 512³ | 1704 GOP/s | VNNI 打包 563 的 3.0 倍；单核峰值约 4.3 TOP/s 的 40% |
+| AMX，K = 24 | 162 GOP/s | 补零到 64，是 VNNI（270）的 0.6 倍 |
+| RTX 6000D 读 / 拷贝 | 1333 / 1280 GB/s | 4 GB 顺序；规格 1398 |
+| RTX 6000D L2 | 112 MB | 33 MB 的权重会常驻，计时必须轮换拷贝 |
+| Triton eager 下发 | 约 22 µs / 次 | CUDA graph 后 3.7 µs |
+| Qwen2.5-7B 只算 Linear 解码 | fp16 92、Q8 163、Q4 284 tok/s（graph） | Q4 eager 只有 176 |
+| llama.cpp Q4_0 7B 1 线程解码 | 3.97 tok/s | × 每 token 4.1 GB 权重 = 16.3 GB/s，单核 DRAM 读的 93% |
+
 ## 设备表（数据手册算术，不是实测）
 
 来自 `edge_harness/devices.py`。带宽是数据率 × 位宽，不是持续值。

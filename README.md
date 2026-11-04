@@ -64,6 +64,7 @@ python tools/edge_calc.py pipeline --tiles 8 --dma 2 --compute 2
 | 某个实验的代码、测试、图和结论 | [按实验查](#实验实现)，总目录在 [`solutions/`](solutions/README.md) |
 | 数字从哪来、怎么复核 | [VERIFICATION.md](VERIFICATION.md)、[`claims.json`](claims.json) |
 | 官方题面和 starter | [`assignments/`](assignments/README.md)，来源记在 [UPSTREAM.md](UPSTREAM.md) |
+| 成文的实验报告（LaTeX / PDF） | [lab2 量化](reports/lab2-quantization/lab2_quantization_report.pdf)、[Xeon + RTX 6000D 服务器复测](reports/edge-runtime-server/edge_runtime_server_report.pdf)、[llama.cpp 7B](reports/llama-cpp-7b/llama_cpp_7b_report.pdf) |
 | 与 mlsys-infra 的对应 | [BRIDGE.md](BRIDGE.md) |
 | 论文、运行时、工具索引 | [`resources/`](resources/README.md) |
 
@@ -81,6 +82,7 @@ python tools/edge_calc.py pipeline --tiles 8 --dma 2 --compute 2
 | tensor-program-tuning | [代码](solutions/mlc/tensor-program-tuning/code/) · [测试](solutions/mlc/tensor-program-tuning/tests/) · [图](solutions/mlc/tensor-program-tuning/artifacts/figures/) · [说明](solutions/mlc/tensor-program-tuning/README.md) | 搜索 2.4 / 1.6 倍于教科书；代价模型 Spearman 0.47 / 0.53；复测噪声 −9%～+5%；512 位 13/16 变慢 |
 | dma-double-buffer | [代码](solutions/edge-runtime/dma-double-buffer/code/) · [测试](solutions/edge-runtime/dma-double-buffer/tests/) · [图](solutions/edge-runtime/dma-double-buffer/artifacts/figures/) · [说明](solutions/edge-runtime/dma-double-buffer/README.md) | 模拟与闭式逐点相等；depthwise + HyperRAM 效率 0.257、双缓冲 1.24 倍；本机实测 0.61–1.23 倍 |
 | q4-gemv | [代码](solutions/edge-runtime/q4-gemv/cpp/) · [测试](solutions/edge-runtime/q4-gemv/tests/) · [图](solutions/edge-runtime/q4-gemv/artifacts/figures/) · [说明](solutions/edge-runtime/q4-gemv/README.md) | 与 gguf 逐字节一致；Q4 × Q8 单线程 4.6 倍于 fp32；GPT-2 280 窗口 fp32 29.95 / Q8_0 29.95 / Q4_0 31.88 / Q4_1 32.15 |
+| llama-cpp-7b | [代码](solutions/edge-runtime/llama-cpp-7b/code/) · [测试](solutions/edge-runtime/llama-cpp-7b/tests/) · [图](solutions/edge-runtime/llama-cpp-7b/artifacts/figures/) · [说明](solutions/edge-runtime/llama-cpp-7b/README.md) | Qwen2.5-7B 11 种 GGUF：GPU 解码达带宽线 93%（F16）→ 64%（Q2_K），CPU 上 K-quant 只到 44–56%；AMX 重排 prefill 2.8 倍；Q4_K_M 的 KLD 是 Q4_0 的 0.55 倍；端到端比 q4-gemv 预测多 0.41–0.47 ms/token |
 
 依赖：`pip install -r requirements.txt`（CPU torch、onnxruntime、numpy）和 PATH 上的 g++。每个实验：
 
@@ -90,7 +92,7 @@ python -m pytest -q tests
 python scripts/run_experiments.py
 ```
 
-全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；9 套 130 个测试，`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)。
+全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；10 套 135 个测试，`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)。
 
 ## 许可
 

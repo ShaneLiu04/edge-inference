@@ -1,0 +1,17 @@
+problem,key,gflops_256,gflops_512
+square_256,ojki_iikj_t1x32x8_p0_u4,102.037164,149.643779
+square_256,oikj_iikj_t64x32x8_p0_u4,108.875453,149.708594
+square_256,ojki_iikj_t16x32x8_p0_u4,114.577882,170.775721
+square_256,ojki_iijk_t1x32x8_p1_u1,106.177968,167.877694
+square_256,ojki_iikj_t64x32x8_p0_u4,112.510502,166.76187
+square_256,ojik_iikj_t16x32x8_p0_u4,112.196141,173.125962
+square_256,ojki_iikj_t64x32x8_p0_u1,115.118005,166.743529
+square_256,okji_ijik_t2x32x8_p1_u1,113.07096,160.295941
+mbv2_pw_expand_14,ojki_iikj_t4x32x8_p1_u1,92.3252422,143.622967
+mbv2_pw_expand_14,ojki_iikj_t4x32x8_p1_u4,108.07934,145.122505
+mbv2_pw_expand_14,ojki_iikj_t4x32x8_p0_u4,111.108772,150.586406
+mbv2_pw_expand_14,ojki_iikj_t1x32x8_p1_u1,109.836264,147.902252
+mbv2_pw_expand_14,okji_iikj_t4x32x8_p0_u4,105.410057,145.406885
+mbv2_pw_expand_14,ojki_iikj_t1x32x8_p0_u1,107.781354,156.526092
+mbv2_pw_expand_14,okji_iikj_t1x32x8_p0_u1,109.046112,152.055651
+mbv2_pw_expand_14,okji_iikj_t2x32x8_p0_u1,110.307745,147.098432

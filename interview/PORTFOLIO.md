@@ -1,7 +1,7 @@
 # 项目作品集：面试用 STAR 故事
 
 每条按「20 秒结论 → STAR → 白板 → 不能推出的结论 → 追问」组织。数字来自各实验 `artifacts/raw/`，关键数字由根目录 [`claims.json`](../claims.json) 校验。
-平台只有一类：Ice Lake 服务器虚拟机（4 物理核 / 8 逻辑核，AVX-512 + VNNI），实测屋顶见 [HARDWARE-NUMBERS](HARDWARE-NUMBERS.md)。
+平台：故事 1–6 在 Ice Lake 服务器虚拟机（4 物理核 / 8 逻辑核，AVX-512 + VNNI）上，故事 7 加上 Xeon 8470Q 与 RTX 6000D，实测屋顶见 [HARDWARE-NUMBERS](HARDWARE-NUMBERS.md)。
 MCU、NPU、Pi 5、Orin 的数字全部是设备表参数或模型输出，每个故事里都标明。
 
 讲法：只准备两个故事。部署 / 量化岗用 1 和 3，CPU 推理引擎岗用 2 和 5，MCU / NPU 岗用 4 和 3，端侧 LLM 岗用 6 和 2。
@@ -18,6 +18,7 @@ MCU、NPU、Pi 5、Orin 的数字全部是设备表参数或模型输出，每�
 | 4 | 按大小贪心在 11 个配置上都等于激活下界；patch 推理把 MBv2-0.35@160 从 375 KiB 压到 100 KiB，塞进 256 KB MCU | 内存规划 | [tinyengine-memory](../solutions/mit6.5940/tinyengine-memory/README.md) · [M04](../notes/module-04-static-memory-planning.md) |
 | 5 | 自写 AutoTVM 闭环，搜索比教科书分块快 2.4 倍；代价模型 Spearman 只有 0.47，不如随机 | 调度搜索、测量 | [tensor-program-tuning](../solutions/mlc/tensor-program-tuning/README.md) · [M06](../notes/module-06-schedule-search.md) |
 | 6 | Q4 × Q8 GEMV 比 fp32 快 4.6 倍，字节却少 7.1 倍：被每块指令限住，多累加器的假设被实验否定 | 端侧 LLM 解码 | [q4-gemv](../solutions/edge-runtime/q4-gemv/README.md) · [M08](../notes/module-08-block-quantized-decode.md) |
+| 7 | 同一份代码换到 Sapphire Rapids + RTX 6000D：Winograd、512 位向量、双缓冲三条结论翻转；AMX 只在 K 填满 tile 时赢 | 跨平台、性能可迁移性 | [CROSS-HOST](CROSS-HOST.md) · [报告](../reports/edge-runtime-server/edge_runtime_server_report.pdf) |
 
 ---
 
@@ -115,6 +116,23 @@ MCU、NPU、Pi 5、Orin 的数字全部是设备表参数或模型输出，每�
 - **白板**：E25 的 tok/s ≤ BW / 权重字节（Llama-7B Q4_0 3.79 GB：Pi 5 上限 4.5 tok/s、Orin Nano 17.9）；E26 的偏移项 8·Σx 每个激活块只算一次。
 - **不能推出**：没有测完整 7B 模型，7B 的 token/s 是由单层 GEMV 推算的；Pi 5 和 Orin 的数是设备表上界；Q4_1 和 Q4_0 困惑度差 0.27 没有置信区间。
 - **追问**：4 线程 Q8 更快，那该选 Q8？矩阵能部分留在缓存时才成立；7B 的 GB 级权重每个 token 都从 DRAM 流过，按 48.4 GB/s 封顶算，Q8 约 148 ms/token，Q4 约 125 ms，结论很可能反转。
+  服务器上 llama.cpp 跑完整 Qwen2.5-7B 证实了反转：16 线程 Q4_0 37.4、Q8_0 22.0 tok/s。
+
+## 7. 换一台机器，三条结论翻转
+
+**20 秒**：把全部 edge-runtime 实验原样搬到 Xeon 8470Q（Sapphire Rapids）和 RTX 6000D 上重跑。大部分指标快 1.3–2.7 倍，与单核睿频和更大缓存一致；但 Winograd 在 56² 层从快 16% 变成慢 32%，512 位向量从中位数慢 12% 变成前 8 名全部更快，两线程双缓冲在所有工作量下都慢于串行（0.63–0.95 倍）。新增的 AMX 路径在 512³ 上是 VNNI 的 3.0 倍，K = 24 时只有 0.6 倍；GPU 上 Q4 GEMV 读到实测带宽的 99.5%，但只有 CUDA graph 才把它兑现成 3.1 倍的解码速度。
+
+- **S**：第一版所有结论都来自一台 4 核虚拟机，面试官会问「换台机器还成立吗」。
+- **T**：区分结构性结论（只由访存 / 计算比决定）和位置性结论（取决于两个量谁大）。
+- **A**：同一份代码、绑 NUMA1 物理核、1–16 线程扫描；新增 AMX tile GEMM（`arch_prctl` 申请 XTILEDATA，2×2 输出块）、Triton 融合反量化 GEMV（AoS → SoA、L2 冷计时、eager 与 graph）；`compare_hosts.py` 生成 34 项对照，汇编计数拆分编译器因素。
+- **R**：
+  - 单核 DRAM 17.5 GB/s，只高 30%；16 线程 193.5。llama.cpp 单线程 Q4_0 7B 3.97 tok/s × 每 token 4.1 GB = 16.3 GB/s，是单核带宽的 93%。
+  - AMX：512³ 1704 GOP/s；prefill 5.9 倍（VNNI 内核把 16 MiB 的 B 扫 64 遍，AMX 8 遍）；单独 requant 的损失从 12% 变成 43%。
+  - 编译器：同一段标量 int8，GCC 13 自动向量化成 `vpdpbusd`（100 GOP/s），GCC 11 只有 20。
+  - GPU：只算 Linear 的 Qwen2.5-7B 解码，fp16 92、Q8 163、Q4 284 tok/s（graph）；eager 下 Q4 只有 176，22 µs 的下发地板吃掉一半收益。
+- **白板**：Winograd 收益 t_g / (t_g / 2.25 + t_x) 随 GEMM 变快而缩小；AMX 有效比例 η(K) = K / (64⌈K/64⌉)；Amdahl 1 / ((1 − f) / s + f)。
+- **不能推出**：两台机器的编译器不同，跨主机比值混合了硬件与编译器；服务器 cgroup 只给 22 个 CPU 配额且有其他租户；都没有性能计数器。
+- **追问**：AMX 峰值 4.3 TOP/s，你只到 40%，差在哪？2×2 输出块里每个 tile 只复用 2 次，tile load 没被藏住；更大的块受限于 8 个 tile 寄存器。没有计数器，这是推算。
 
 ---
 

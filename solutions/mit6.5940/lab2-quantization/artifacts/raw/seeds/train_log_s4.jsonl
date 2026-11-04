@@ -1,0 +1,33 @@
+{"kind": "run", "git_commit": null, "git_dirty": null, "started": "2026-11-04T11:12:14+0800", "python": "3.12.3", "platform": "Linux-5.15.0-78-generic-x86_64-with-glibc2.35", "processor": "x86_64", "cpu_count": 208, "argv": ["scripts/train.py", "--device", "cuda", "--threads", "2", "--seed", "4", "--ckpt", "checkpoints/seeds/micronet_s4.pt", "--log", "artifacts/raw/seeds/train_log_s4.jsonl"]}
+{"kind": "model", "params": 209354, "macs": 8571392, "epochs": 30, "batch": 128, "lr": 0.1, "seed": 4, "device": "cuda"}
+{"kind": "epoch", "epoch": 1, "loss": 1.8352025970434531, "test_acc": 0.5059, "epoch_s": 5.425119198858738}
+{"kind": "epoch", "epoch": 2, "loss": 1.471713890784826, "test_acc": 0.6038, "epoch_s": 5.1449327021837234}
+{"kind": "epoch", "epoch": 3, "loss": 1.3309082116836157, "test_acc": 0.6673, "epoch_s": 5.2337105898186564}
+{"kind": "epoch", "epoch": 4, "loss": 1.2272676192797147, "test_acc": 0.7122, "epoch_s": 5.173900617286563}
+{"kind": "epoch", "epoch": 5, "loss": 1.1475377915761409, "test_acc": 0.724, "epoch_s": 5.227863719686866}
+{"kind": "epoch", "epoch": 6, "loss": 1.082345586709487, "test_acc": 0.7606, "epoch_s": 5.4289224445819855}
+{"kind": "epoch", "epoch": 7, "loss": 1.043710271211771, "test_acc": 0.7534, "epoch_s": 5.149026044644415}
+{"kind": "epoch", "epoch": 8, "loss": 1.0116312485474808, "test_acc": 0.7813, "epoch_s": 5.162035943940282}
+{"kind": "epoch", "epoch": 9, "loss": 0.9845272802389585, "test_acc": 0.781, "epoch_s": 5.161888533271849}
+{"kind": "epoch", "epoch": 10, "loss": 0.9612843764133943, "test_acc": 0.7936, "epoch_s": 5.1645797053352}
+{"kind": "epoch", "epoch": 11, "loss": 0.9415204141384516, "test_acc": 0.8111, "epoch_s": 5.146075182594359}
+{"kind": "epoch", "epoch": 12, "loss": 0.9244707951178918, "test_acc": 0.8263, "epoch_s": 5.151460910215974}
+{"kind": "epoch", "epoch": 13, "loss": 0.9064709930847853, "test_acc": 0.8295, "epoch_s": 5.134148763492703}
+{"kind": "epoch", "epoch": 14, "loss": 0.8947461310105446, "test_acc": 0.8239, "epoch_s": 5.165291474200785}
+{"kind": "epoch", "epoch": 15, "loss": 0.8817405943687145, "test_acc": 0.8269, "epoch_s": 5.1273063570261}
+{"kind": "epoch", "epoch": 16, "loss": 0.8643194180268507, "test_acc": 0.842, "epoch_s": 5.137473878450692}
+{"kind": "epoch", "epoch": 17, "loss": 0.8518805505373539, "test_acc": 0.8456, "epoch_s": 5.171073142439127}
+{"kind": "epoch", "epoch": 18, "loss": 0.8418646175127763, "test_acc": 0.8408, "epoch_s": 5.1441162237897515}
+{"kind": "epoch", "epoch": 19, "loss": 0.8331347407438816, "test_acc": 0.8497, "epoch_s": 5.172358091920614}
+{"kind": "epoch", "epoch": 20, "loss": 0.8180516076393617, "test_acc": 0.8514, "epoch_s": 5.130003391765058}
+{"kind": "epoch", "epoch": 21, "loss": 0.8086894950805567, "test_acc": 0.8553, "epoch_s": 5.209442346356809}
+{"kind": "epoch", "epoch": 22, "loss": 0.7951464926585173, "test_acc": 0.8625, "epoch_s": 5.152030568569899}
+{"kind": "epoch", "epoch": 23, "loss": 0.7853629772479718, "test_acc": 0.8703, "epoch_s": 5.1670969082042575}
+{"kind": "epoch", "epoch": 24, "loss": 0.7724918470932887, "test_acc": 0.8688, "epoch_s": 5.162541588768363}
+{"kind": "epoch", "epoch": 25, "loss": 0.7657025445730258, "test_acc": 0.8732, "epoch_s": 5.170679099857807}
+{"kind": "epoch", "epoch": 26, "loss": 0.751848203707964, "test_acc": 0.8749, "epoch_s": 5.435086252167821}
+{"kind": "epoch", "epoch": 27, "loss": 0.7444224991859534, "test_acc": 0.8764, "epoch_s": 5.454639101400971}
+{"kind": "epoch", "epoch": 28, "loss": 0.7363481032542694, "test_acc": 0.8789, "epoch_s": 5.15900091920048}
+{"kind": "epoch", "epoch": 29, "loss": 0.7282535950342814, "test_acc": 0.8777, "epoch_s": 5.1456404104828835}
+{"kind": "epoch", "epoch": 30, "loss": 0.7273247524713858, "test_acc": 0.8791, "epoch_s": 5.168008656241}
+{"kind": "final", "test_acc": 0.8791, "train_s": 156.0099039580673}

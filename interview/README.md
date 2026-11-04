@@ -7,7 +7,8 @@
 | [SYSTEM-DESIGN.md](SYSTEM-DESIGN.md) | 设计题：256 KB MCU 视觉唤醒词、手机 1B LLM、NPU 算子回退、量化验收流水线 |
 | [PORTFOLIO.md](PORTFOLIO.md) | 讲自己做过的实验。6 个故事，每条有 20 秒结论、白板和「不能推出的结论」 |
 | [CODING.md](CODING.md) | 手写题 C1–C22：requant、BN 折叠、KL 校准、arena 规划、Winograd、VNNI 打包、Q4 点积 |
-| [QUESTION-BANK.md](QUESTION-BANK.md) | 32 道按模块分组的概念题，每题带常见错答 |
+| [QUESTION-BANK.md](QUESTION-BANK.md) | 42 道按模块分组的概念题，每题带常见错答；M09 是换机器后翻转的结论 |
+| [CROSS-HOST.md](CROSS-HOST.md) | 同一代码在 4 核 VM 与 Xeon 8470Q 上的 34 项指标对照，附加速比图 |
 | [COURSE-QA.md](COURSE-QA.md) | 8 讲的一句话答案 |
 | [ENGINEERING.md](ENGINEERING.md) | 「掉点 / 对不上 / 变慢 / 放不下怎么查」的排查顺序 |
 
@@ -25,7 +26,8 @@
 
 ## 讲实验的规则
 
-本仓库的实验都在一台 4 物理核的 Ice Lake 虚拟机上跑，没有开发板，也没有性能计数器。能讲的是：
+本仓库的实验先在一台 4 物理核的 Ice Lake 虚拟机上跑，再在 AutoDL 的 Xeon 8470Q + RTX 6000D 服务器上复现（结果放在各 lab 的
+`artifacts/raw/xeon8470q/` 与 `artifacts/raw/gpu/`）。没有开发板，两台机器都没有性能计数器。能讲的是：
 
 - **正确性**：与参考实现逐位或逐字节相等（整数卷积、requant、块量化打包）。
 - **同机相对比较**：A 比 B 快几倍、离实测屋顶多远、规划器离下界多远。

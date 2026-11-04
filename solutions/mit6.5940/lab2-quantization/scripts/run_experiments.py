@@ -347,7 +347,7 @@ def step_ort(ctx: Ctx) -> None:
     )
     from onnxruntime.quantization.shape_inference import quant_pre_process
 
-    work = LAB / "artifacts/work"
+    work = RAW.parent / "work"  # per --out, so parallel runs on different checkpoints do not share models
     work.mkdir(parents=True, exist_ok=True)
     fp32_path = work / "micronet_folded.onnx"
     torch.onnx.export(ctx.folded, ctx.xte[:1], str(fp32_path), input_names=["x"], output_names=["logits"],

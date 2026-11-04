@@ -489,7 +489,9 @@ int main(int argc, char** argv) {
     std::string mode = arg_s(argc, argv, "mode", "check");
     // Decoder layers of a 1B-class and a 7B-class model, plus a GPT-2 small MLP.
     const Shape shapes[] = {{"gpt2_mlp_768x3072", 3072, 768}, {"llama1b_2048x2048", 2048, 2048},
-                            {"llama1b_mlp_8192x2048", 8192, 2048}, {"llama7b_4096x4096", 4096, 4096}};
+                            {"llama1b_mlp_8192x2048", 8192, 2048}, {"llama7b_4096x4096", 4096, 4096},
+                            // fp32 180 MB: larger than a 105 MB server L3, so fp32 / fp16 rows are DRAM-bound there.
+                            {"llama7b_mlp_11008x4096", 11008, 4096}};
     if (mode == "bench") {
         int threads = static_cast<int>(arg_ll(argc, argv, "threads", 1));
         int repeats = static_cast<int>(arg_ll(argc, argv, "repeats", 9));

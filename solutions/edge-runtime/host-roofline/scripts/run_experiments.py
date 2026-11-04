@@ -18,13 +18,13 @@ ROOT = LAB.parents[2]
 sys.path[:0] = [str(LAB / "code"), str(ROOT)]
 
 from edge_harness import devices  # noqa: E402
-from edge_harness.cpp import build, run_json  # noqa: E402
+from edge_harness.cpp import bench_threads, build, run_json  # noqa: E402
 from edge_harness.writer import JsonlWriter, read_rows, write_csv, write_json  # noqa: E402
 from hostroof.analysis import attainable, conv_intensity, efficiency, plateaus, ridge  # noqa: E402
 
 RAW = LAB / "artifacts/raw"
 FIG = LAB / "artifacts/figures"
-THREADS = (1, 4)
+THREADS = bench_threads()
 
 
 def measure(max_mib: int) -> None:
@@ -96,10 +96,10 @@ def plot(summary: dict) -> None:
     s1 = summary["t1"]
     fig, ax = plt.subplots(figsize=(8, 5))
     xs = np.logspace(-2, 3, 200)
-    for t, ls in zip(THREADS, ("-", "--")):
+    for t, ls in zip(THREADS, ("-", "--", "-.", ":", (0, (5, 1)), (0, (1, 3)))):
         s = summary[f"t{t}"]
-        ax.loglog(xs, attainable(xs, s["fp32_gflops"], s["dram_read_gbps"]), "C0" + ls, label=f"fp32 roof, {t} thread")
-        ax.loglog(xs, attainable(xs, s["int8_gops"], s["dram_read_gbps"]), "C3" + ls, label=f"int8 VNNI roof, {t} thread")
+        ax.loglog(xs, attainable(xs, s["fp32_gflops"], s["dram_read_gbps"]), color="C0", ls=ls, label=f"fp32 roof, {t} thread")
+        ax.loglog(xs, attainable(xs, s["int8_gops"], s["dram_read_gbps"]), color="C3", ls=ls, label=f"int8 VNNI roof, {t} thread")
     ax.loglog(xs, attainable(xs, s1["fp32_gflops"], s1["l1_read_gbps"]), "C0:", lw=1, label="fp32 roof from L1, 1 thread")
     pts = lab_points(s1["fp32_gflops"], s1["dram_read_gbps"])
     for src, marker, color in (("conv", "o", "C2"), ("gemm", "^", "C1")):
@@ -125,11 +125,11 @@ def plot(summary: dict) -> None:
 
     rows = read_rows(RAW / "roofline.jsonl")
     fig, ax = plt.subplots(figsize=(7, 4))
-    for t, ls in zip(THREADS, ("-", "--")):
+    for t, ls in zip(THREADS, ("-", "--", "-.", ":", (0, (5, 1)), (0, (1, 3)))):
         for kernel, c in (("read", "C0"), ("triad", "C1")):
             sel = sorted((r for r in rows if r["kind"] == "bw" and r["kernel"] == kernel and r["threads"] == t),
                          key=lambda r: r["bytes"])
-            ax.semilogx([r["bytes"] for r in sel], [r["GBps"] for r in sel], c + ls, marker=".", label=f"{kernel}, {t}t")
+            ax.semilogx([r["bytes"] for r in sel], [r["GBps"] for r in sel], color=c, ls=ls, marker=".", label=f"{kernel}, {t}t")
     ax.set_xlabel("working set (bytes)")
     ax.set_ylabel("GB/s")
     ax.set_title("Bandwidth by working-set size: the cache hierarchy")
