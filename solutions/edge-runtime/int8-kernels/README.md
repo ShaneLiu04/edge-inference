@@ -48,7 +48,7 @@ python scripts/run_experiments.py --only gemm ort               # 计时，约 2
 ![double rounding](artifacts/figures/double_rounding.png)
 
 乘数 m = M0 · 2^-(31+shift)。SRDHM 先舍入一次到 Q31，再右移 shift 位又舍入一次；第二次舍入前的小数恰好在 .5 附近 2^-(shift+1) 宽的区间里时结果翻转。
-实测不一致率与预测同一量级（shift 16：9e-6 对 7.6e-6；shift 9：1.0e-3 对 9.8e-4），单步舍入恒为 0。
+实测不一致率与预测同一量级（shift 16：9e-6 对 7.6e-6；shift 9：1.0e-3 对 9.8e-4），单步舍入在 shift ≥ 10 时为 0，shift 1–9 最多 2.2e-4，比同 shift 的两步舍入低三个数量级以上。
 
 ### `vpmaddubsw` 的饱和
 

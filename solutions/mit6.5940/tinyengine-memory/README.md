@@ -38,7 +38,7 @@ micro 网络是线性链、没有这种交错，所以 first-fit 也是最优；
 
 ![profile](artifacts/figures/memory_profile.png)
 
-MBv2-0.35@160 的逐步存活字节（`profile_mbv2_w035_160.csv`）：峰值在第 4 步，原地 depthwise 把第 2 步从 204,800 压到 108,800，但整网峰值只降到第二高点 358,400。
+MBv2-0.35@160 的逐步存活字节（`profile_mbv2_w035_160.csv`）：峰值在第 5 步（384,000），原地 depthwise 把第 2 步从 204,800 压到 108,800、第 5 步压到 313,600，整网峰值只降到第二高点：第 4 步的 358,400。
 
 ![arena](artifacts/figures/arena_layout.png)
 
