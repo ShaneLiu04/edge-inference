@@ -578,8 +578,8 @@ depthwise 从 HyperRAM 供数是唯一的 DMA 受限组合，效率 0.257，双�
   \item 搜索模型只保留搬运、计算与每次调用开销三项，没有 SIMD 宽度对齐、权重常驻和跨层融合；输出写回被假设为不与计算重叠，pointwise / depthwise 在 HyperRAM 上的效率因此偏保守。
   \item “每块多出的时间分成握手与带宽共享两部分”“服务器上 cache line 跨 mesh 迁移”是由时间随 tile 大小的形状推出的，没有硬件计数器（两台机器都没有 perf 权限），
         也没有做绑核对照实验；服务器上两个线程被调度到哪两个核没有记录，cgroup 限流与其他租户的噪声不能排除。
-  \item \texttt{summary.json} 的键是 \texttt{tile\{KiB\}k\_work\{w\}}，64 KiB、\texttt{work}=4 在两次扫描里各有一行（512 块与 256 块），后写入的 256 块那一行覆盖了前者。
-        README 的跨主机表与 \cref{fig:mvm} 用的是 256 块那一行（本机 0.96、服务器 0.71），\cref{fig:overlap,fig:overlap-srv} 与 \cref{tab:cross} 用的是 512 块那一行（本机 1.08、服务器 0.70）。两者都是真实测量，结论不变。
+  \item 64 KiB、\texttt{work}=4 在两次扫描里各有一行（512 块与 256 块）。\texttt{summary.json} 里 512 块那一行是 \texttt{tile64k\_work4}（本机 1.08、服务器 0.70），
+        256 块那一行是 \texttt{tile64k\_n256\_work4}（本机 0.96、服务器 0.71）。\cref{fig:mvm} 把两行都画了出来，所以蓝线在 $c/m\approx1.55$ 处有一段竖线。两者都是真实测量，结论不变。
   \item 每点只有 5 次重复取中位数，没有给出离散度；本机曲线在 $c/m = 1.5$--3 之间的锯齿（1.08、1.23、1.10）不应过度解读。
 \end{itemize}
 \end{caveatbox}

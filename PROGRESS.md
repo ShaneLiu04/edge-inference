@@ -9,7 +9,7 @@
 - [x] 面试材料：[速查表](interview/HARDWARE-NUMBERS.md)、[公式卡 E1–E27](interview/FORMULAS.md)、[设计题](interview/SYSTEM-DESIGN.md)、[作品集](interview/PORTFOLIO.md)、[手写题](interview/CODING.md)、[题库](interview/QUESTION-BANK.md)、[课程问答](interview/COURSE-QA.md)、[工程手册](interview/ENGINEERING.md)
 - [x] 白板估算计算器 [`tools/edge_calc.py`](tools/edge_calc.py) 和共享 harness [`edge_harness/`](edge_harness/)，带测试
 - [x] 统一的测试入口 `scripts/run-all-tests.ps1`、仓库检查 `scripts/check-repo.ps1`、数字校验 `scripts/check_claims.py`
-- [ ] 镜像官方 starter：公司网络访问 github.com 返回 407，来源记在 [UPSTREAM.md](UPSTREAM.md)
+- [x] 官方作业的分工写进 [assignments/README.md](assignments/README.md)：剪枝、GPTQ、AWQ、NAS、唤醒词都不在这边重做；starter 按 [UPSTREAM.md](UPSTREAM.md) 不镜像
 
 ## 实验：4 核 Ice Lake 虚拟机（2026-11-03）
 
@@ -37,14 +37,16 @@
 ## 文档（2026-11-12）
 
 - [x] 新结果接进笔记：M01、M02、M03、M05、M06、M07、M08 各加一节服务器、五种子或 7B 的对照
-- [x] 每个实验一份 LaTeX 报告（共 10 份），每份带参考文献；`scripts/check_reports.py` 接进 `check-repo.ps1`
-- [x] 顶层文档（README、PROGRESS、VERIFICATION、CURRICULUM、BRIDGE、作品集）同步到 9 个实验、105 条 claims
+- [x] 每个实验一份 LaTeX 报告（共 11 份，含服务器复测），每份带参考文献；`scripts/check_reports.py` 接进 `check-repo.ps1`
+- [x] 顶层文档（README、PROGRESS、VERIFICATION、CURRICULUM、BRIDGE、作品集）同步到 10 个实验、123 条 claims
 
 ## 还没做的
 
 - [ ] 开发板实测：没有 MCU、NPU、Pi 5、Orin，这些设备的数字是设备表参数与模型推算，标注为上界或模型输出。
 - [ ] 性能计数器：本地虚拟机和 AutoDL 容器都没有 perf / ncu 权限，512 位向量变慢的原因、Q4 内核与 K-quant 的端口瓶颈只给出估算。
-- [ ] TVM / ExecuTorch / TFLite Micro 的端到端对照；本仓库的搜索器、规划器、块格式是自写的最小实现，与官方实现逐字节或逐位对齐的地方在各 README 写明。
+- [x] 同一份 micronet 走 6 条路径（PyTorch、ORT fp32、ORT int8、LiteRT、ExecuTorch、TVM）：[runtime-compare](solutions/edge-runtime/runtime-compare/README.md)，AutoDL 无卡容器，2026-11-12 — [报告](reports/runtime-compare/runtime_compare_report.pdf)
+- [ ] MetaSchedule 调优过的 TVM：24 个任务，0.5 核上第一批 62 个候选 15 分钟没量完，需要 CPU 配额更高的机器。
+- [ ] 搜索器、规划器、块格式仍是自写的最小实现，与官方逐字节或逐位对齐的地方在各 README 写明。
 - [ ] llama.cpp 那 0.45 ms/token 的固定成本没有用 nsys 拆到具体算子。
 
 ## 复验

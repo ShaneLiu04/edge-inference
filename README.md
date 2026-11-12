@@ -4,7 +4,7 @@
 
 材料来自 MIT 6.5940 TinyML and Efficient Deep Learning（Song Han，Fall 2024）、Tianqi Chen 的 Machine Learning Compilation，以及 CMSIS-NN、TFLite Micro、ONNX Runtime、PULP Dory、llama.cpp 这些公开实现里反复出现的契约。取舍见 [CURRICULUM.md](CURRICULUM.md)。作者 [ShaneLiu04](https://github.com/ShaneLiu04)，与上述学校、实验室和项目无隶属关系。`solutions/` 是个人实现，正在修这些课的同学不要把它当作作业提交。
 
-八个模块的实验先在一台 4 物理核的 Ice Lake 服务器虚拟机（AVX-512 + VNNI，Windows，g++ 13.2）上完成，不需要 GPU 和开发板。之后把同一份代码搬到 AutoDL 的 2 × Xeon Platinum 8470Q（Sapphire Rapids，多了 AMX）和 RTX 6000D 上重跑，看哪些结论换机器后会翻转；又加了第九个实验，用 llama.cpp 跑完整的 Qwen2.5-7B，检验单层 GEMV 推出的解码预测。每个数字都能由 `python scripts/check_claims.py` 对照原始结果复核。
+八个模块的实验先在一台 4 物理核的 Ice Lake 服务器虚拟机（AVX-512 + VNNI，Windows，g++ 13.2）上完成，不需要 GPU 和开发板。之后把同一份代码搬到 AutoDL 的 2 × Xeon Platinum 8470Q（Sapphire Rapids，多了 AMX）和 RTX 6000D 上重跑，看哪些结论换机器后会翻转；又加了第九个实验，用 llama.cpp 跑完整的 Qwen2.5-7B，检验单层 GEMV 推出的解码预测；第十个实验 runtime-compare 把 lab2 的同一张网交给 PyTorch、ONNX Runtime fp32 / int8、LiteRT、ExecuTorch、TVM 六条路径，在 AutoDL 无卡容器上比精度和 CPU 时间。每个数字都能由 `python scripts/check_claims.py` 对照原始结果复核。
 
 数据中心一侧（GPU、FlashAttention、GPTQ / AWQ、KV cache、分布式训练）在姊妹仓库 [mlsys-infra](https://gitee.com/liu-xingyan04/mlsys-infra)。两边按同一套结构写（16 节笔记、claims、VERIFICATION、作品集），对应关系见 [BRIDGE.md](BRIDGE.md)。
 
@@ -93,7 +93,7 @@ python -m pytest -q tests
 python scripts/run_experiments.py
 ```
 
-全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；10 套 135 个测试，`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接、报告与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)，每次检查的结果记在 [VERIFICATION.md](VERIFICATION.md)。
+全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；11 套 140 个测试，`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接、报告与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)，每次检查的结果记在 [VERIFICATION.md](VERIFICATION.md)。
 
 ## 报告与服务器实测
 
@@ -114,6 +114,7 @@ python scripts/run_experiments.py
 | [llama-cpp-7b 真实 7B](reports/llama-cpp-7b/llama_cpp_7b_report.pdf) | 8 | 只算 Linear 的预测与 llama.cpp 端到端差一个 0.41–0.47 ms/token 的常数；CPU 上 Q8_0 最快，GPU 上 Q4_K_M 最快 |
 | [lab2-quantization 量化与 QAT](reports/lab2-quantization/lab2_quantization_report.pdf) | 11 | 五个种子的配对差：TensorRT 式 KL 比 fp32 低 24.55±2.42 个点，W4A8 QAT 只低 0.19±0.16；随种子变化的只有「哪一层最敏感」 |
 | [tinyengine-memory 激活规划](reports/tinyengine-memory/tinyengine_memory_report.pdf) | 15 | 按大小降序贪心在 11 个配置上正好等于存活下界；patch 推理把峰值降 3.75 倍，代价是整网 MACs 多 27% |
+| [runtime-compare 六条推理路径](reports/runtime-compare/runtime_compare_report.pdf) | 9 | 四条 fp32 导出链与 PyTorch 逐图同答；单线程 ORT int8 127 µs、LiteRT 166、ExecuTorch 192、ORT fp32 202、PyTorch eager 1173、不调优的 TVM 4107 |
 | [edge-runtime-server 服务器复测](reports/edge-runtime-server/edge_runtime_server_report.pdf) | 14 | 同一份代码在 Xeon 8470Q 和 RTX 6000D 上重跑，大部分指标只改常数，三条「经验法则」翻转 |
 
 同一份代码在两台主机上的 34 项指标对照在 [CROSS-HOST.md](interview/CROSS-HOST.md)：大部分指标快 1.3–2.7 倍，但 Winograd 在 56² 层、512 位向量、两线程双缓冲这三条结论在服务器上翻转。

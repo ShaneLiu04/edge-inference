@@ -14,11 +14,12 @@
 | 07 | [edge-runtime/dma-double-buffer](edge-runtime/dma-double-buffer/README.md) | Python / C++ | 11 | depthwise + HyperRAM 效率 0.257；本机实测 0.61–1.23 倍 |
 | 08 | [edge-runtime/q4-gemv](edge-runtime/q4-gemv/README.md) | C++ / Python | 10 | Q4 × Q8 4.6 倍于 fp32；GPT-2 Q4_0 31.88 |
 | 09 | [edge-runtime/llama-cpp-7b](edge-runtime/llama-cpp-7b/README.md) | Python（驱动 llama.cpp） | 5 | Qwen2.5-7B 11 种 GGUF；Q4_K_M 的 KLD 是 Q4_0 的 0.55 倍；AMX 重排 prefill 2.8 倍 |
+| — | [edge-runtime/runtime-compare](edge-runtime/runtime-compare/README.md) | Python | 5 | 同一 micronet 走 6 条路径：fp32 四个运行时与 PyTorch 逐图同答；ORT int8 127 µs、LiteRT 166、ExecuTorch 192、ORT fp32 202、PyTorch 1173、不调优的 TVM 4107 |
 
 另有 `tools/tests`（计算器与 harness，15 个测试）。全量：
 
 ```powershell
-./scripts/run-all-tests.ps1            # 10 套，135 个测试
+./scripts/run-all-tests.ps1            # 11 套，140 个测试
 $env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1   # 无 AVX-512 的回退路径
 ```
 

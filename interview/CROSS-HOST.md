@@ -37,8 +37,8 @@
 | conv-kernels | 3×3 conv 14² implicit GEMM | GFLOP/s | 34.9 | 48.2 | 1.38 |
 | conv-kernels | 3×3 conv 14² Winograd F(2,3) | GFLOP/s | 75.0 | 144 | 1.92 |
 | conv-kernels | depthwise 56² NHWC SIMD | GFLOP/s | 10.8 | 17.0 | 1.58 |
-| dma-double-buffer | 双缓冲实测加速（64 KiB tile，work=4） | × | 0.96 | 0.71 | 0.74 |
-| dma-double-buffer | 双缓冲模型预测（同上） | × | 1.65 | 1.58 | 0.96 |
+| dma-double-buffer | 双缓冲实测加速（64 KiB tile × 512，work=4） | × | 1.08 | 0.70 | 0.65 |
+| dma-double-buffer | 双缓冲模型预测（同上） | × | 1.64 | 1.62 | 0.99 |
 | dma-double-buffer | 双缓冲实测加速（1 MiB tile，work=4） | × | 1.08 | 0.85 | 0.78 |
 | tensor-program-tuning | 256³ 调度搜索最优 | GFLOP/s | 85.7 | 115 | 1.34 |
 | tensor-program-tuning | 256³ NumPy 单线程（OpenBLAS） | GFLOP/s | 90.1 | 161 | 1.78 |
@@ -55,5 +55,5 @@
 2. **AMX 在大 K 上是 VNNI 的 3–6 倍，在小 K 上反而更慢。** 512³ 上 1704 对 563 GOP/s，prefill 形状上 1659 对 280；MBv2 expand（K=24）被补齐到 tile 的 K=64，有效算力只剩 3/8，162 对 270。选 kernel 要看 K 能否填满 tile。
 3. **“标量代码”的速度取决于编译器。** 同一份标量 int8 循环，本地 GCC 13 下 100 GOP/s、服务器 GCC 11 下 20 GOP/s——对 `int8.cpp` 用 `-S -march=native` 编出汇编计数：GCC 13 全文件 `vpdpbusd` 78 条、字节扩展 `vpmov[sz]xbw` 14 条；GCC 11 是 60 条与 80 条——多出的 18 条 VNNI 就是标量循环被 GCC 13 识别成点积，GCC 11 只能先扩成 16 位再乘。手写 intrinsics 的版本两边都稳定，这就是手写的理由。
 4. **Winograd 的收益依赖主机。** 本地在 56² 上 Winograd 比 implicit GEMM 快 16%，服务器上反而慢 32%（54 对 80）；14² 上本地快 2.1 倍、服务器快 3.0 倍。56² 时变换的额外访存在更快的 GEMM 面前显得更贵。
-5. **软件双缓冲在服务器上全部变慢。** 64 KiB / work=4 时本地 0.96 倍、服务器 0.71 倍，而模型预测 1.6 倍：拷贝线程与计算线程共享同一插槽的带宽与 cgroup 配额，并不是独立 DMA 引擎。模型只在拷贝真正不占计算资源时成立（MCU 的 DMA、GPU 的 copy engine）。
+5. **软件双缓冲在服务器上全部变慢。** 64 KiB × 512 块、work=4 时本地 1.08 倍、服务器 0.70 倍，而模型预测 1.6 倍：拷贝线程与计算线程共享同一插槽的带宽与 cgroup 配额，并不是独立 DMA 引擎。模型只在拷贝真正不占计算资源时成立（MCU 的 DMA、GPU 的 copy engine）。
 6. **搜索收敛更快，但代价模型排序能力没有本质提升。** 两边 Spearman 都在 0.47–0.56；服务器上 random 在 13 次试验内到 90%，本地要 20 次；一种解释是 Sapphire Rapids 的 L2 更大（2 MB 对 1.25 MB），好调度的区域更宽，但本实验没有单独验证。

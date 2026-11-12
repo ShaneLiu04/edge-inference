@@ -9,10 +9,10 @@
 | 检查什么 | 命令 | 结果 |
 | --- | --- | --- |
 | 笔记的结构（16 节、元数据、公式块、追问链）、到 mlsys-infra 笔记的链接、索引、术语 | `python notes/check_notes.py` | 8 讲全部通过 |
-| 全部测试，AVX-512 + VNNI | `./scripts/run-all-tests.ps1` | 10 套全部通过，135 个测试 |
-| 全部测试，无 AVX-512 的回退路径 | `$env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1` | 10 套全部通过，135 个测试 |
-| README、笔记、报告里的关键数字与原始数据一致 | `python scripts/check_claims.py`（对照 `claims.json`） | 105 条全部吻合 |
-| Markdown 相对链接、实验目录结构、报告（PDF 存在、图能找到、每条参考文献都被引用且没有未定义的引用）、claims、密钥扫描 | `./scripts/check-repo.ps1`（报告部分由 `scripts/check_reports.py` 完成） | 通过，9 个实验，10 份报告 |
+| 全部测试，AVX-512 + VNNI | `./scripts/run-all-tests.ps1` | 11 套全部通过，140 个测试 |
+| 全部测试，无 AVX-512 的回退路径 | `$env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1` | 上一轮 10 套 135 个。runtime-compare 是纯 Python，本轮没有重跑这条 |
+| README、笔记、报告里的关键数字与原始数据一致 | `python scripts/check_claims.py`（对照 `claims.json`） | 123 条全部吻合 |
+| Markdown 相对链接、实验目录结构、报告（PDF 存在、图能找到、每条参考文献都被引用且没有未定义的引用）、claims、密钥扫描 | `./scripts/check-repo.ps1`（报告部分由 `scripts/check_reports.py` 完成） | 通过，10 个实验，11 份报告 |
 | 代码风格 | `python -m ruff check .` | 通过 |
 | CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml)：Ubuntu + Python 3.12，CPU torch，ruff + `check-repo.ps1` + `run-all-tests.sh`；没有 mlsys-infra 同级目录时跳过跨仓库笔记名校验 | 配置就绪。Gitee 不原生运行 GitHub Actions，镜像到 GitHub 后生效 |
 
@@ -51,7 +51,8 @@ q4-gemv 的 Triton 内核不在 pytest 里：`python gpu/bench_gpu.py check` 在
 ## 已知缺口
 
 - 没有开发板：没有在 MCU、NPU、Pi 上跑过任何一个实验。
-- 没有 TVM、ExecuTorch、TFLite Micro 的端到端对照；本仓库的搜索器、规划器、块格式是最小实现，与官方实现对齐的部分（gguf 逐字节、ORT 逐位）在各 README 写明。
+- [runtime-compare](solutions/edge-runtime/runtime-compare/README.md) 在 x86 服务器 CPU 上对照了 ORT、LiteRT、ExecuTorch、TVM；TFLite Micro 和 MetaSchedule 调优过的 TVM 没有跑。本仓库的搜索器、规划器、块格式是最小实现，与官方实现对齐的部分（gguf 逐字节、ORT 逐位）在各 README 写明。
+- runtime-compare 的时间是 0.5 核 cgroup 下的 CPU 时间：同一批内部的排序可靠，跨批的绝对值能差一半。
 - 官方 starter code 未镜像，见 [UPSTREAM.md](UPSTREAM.md)。
 - llama.cpp 端到端比 q4-gemv 预测多出的 0.41–0.47 ms/token 没有用 nsys 拆到具体算子；llama-perplexity 的 ctx 512 协议与 mlsys-infra 的 HF 协议不同，两边困惑度不能直接比。
 - 报告只做静态检查（`check_reports.py` 不需要 TeX）；重新编译需要 XeLaTeX：`latexmk -xelatex <report>.tex`。

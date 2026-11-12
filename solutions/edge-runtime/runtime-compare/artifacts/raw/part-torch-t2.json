@@ -1,0 +1,1 @@
+{"runtime": "torch", "status": "ok", "acc": 0.8816, "cpu_us_eval": 1173.3876551, "repeats": 200, "wall_us": 2147.091175429523, "cpu_us": 1086.5589149999998, "logit_max_abs": 0.0, "argmax_agree": 1.0, "version": "2.8.0+cu128", "threads": 1, "maxrss_mb": 664.34375, "trial": 2}

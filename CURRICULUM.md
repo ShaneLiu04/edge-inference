@@ -36,6 +36,8 @@
 
 模块 01、02、05、06、07、08 的实验还在 Xeon 8470Q + RTX 6000D 上重跑过一遍，用来区分「结构性」结论（只由访存 / 计算比决定）和「位置性」结论（取决于两个量谁大，换机器会翻转），见 [CROSS-HOST.md](interview/CROSS-HOST.md) 和[服务器复测报告](reports/edge-runtime-server/edge_runtime_server_report.pdf)。
 
+逐道官方作业的分工见 [assignments/README.md](assignments/README.md)。
+
 ## 和相邻仓库的边界
 
 | 内容 | 放在哪 | 理由 |
@@ -55,7 +57,7 @@
 5. 至少一道带常见错答的题进 [interview/QUESTION-BANK.md](interview/QUESTION-BANK.md)，一句话答案进 [COURSE-QA](interview/COURSE-QA.md)。
 6. 一份 LaTeX 报告，放在 `reports/<lab>/`，带参考文献（`scripts/check_reports.py` 校验）。
 
-八个模块六件都已交付，第 9 个实验 llama-cpp-7b 也有 README、测试、claims 和报告，状态见 [PROGRESS.md](PROGRESS.md)。
+八个模块六件都已交付，第 9 个实验 llama-cpp-7b 和第 10 个实验 runtime-compare 也有 README、测试、claims 和报告，状态见 [PROGRESS.md](PROGRESS.md)。
 
 ## 岗位怎么读
 

@@ -119,6 +119,8 @@ def summarize() -> None:
     if (RAW / "dma_measured.jsonl").exists():
         for r in read_rows(RAW / "dma_measured.jsonl"):
             key = f"tile{r['tile_bytes'] // 1024}k_work{r['work']}"
+            if f"{key}:speedup" in out:  # the tile-size sweep's 64 KiB x 256 row shares a key with the 512-tile work sweep
+                key = f"tile{r['tile_bytes'] // 1024}k_n{r['tiles']}_work{r['work']}"
             out[f"{key}:speedup"] = r["speedup"]
             out[f"{key}:model_speedup"] = r["model_speedup"]
             out[f"{key}:ratio"] = r["ratio_c_over_m"]

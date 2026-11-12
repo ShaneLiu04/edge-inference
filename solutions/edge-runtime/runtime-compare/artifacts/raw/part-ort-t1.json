@@ -1,0 +1,1 @@
+{"runtime": "ort", "status": "ok", "acc": 0.8816, "cpu_us_eval": 213.07347470000005, "repeats": 200, "wall_us": 189.2725843936205, "cpu_us": 189.27226500000003, "logit_max_abs": 5.7220458984375e-06, "argmax_agree": 1.0, "version": "1.31.1", "file_bytes": 843513, "threads": 1, "maxrss_mb": 709.05078125, "trial": 1}

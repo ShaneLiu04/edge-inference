@@ -1,0 +1,1 @@
+{"runtime": "executorch", "status": "ok", "acc": 0.8816, "cpu_us_eval": 185.1685775, "repeats": 200, "wall_us": 156.82289376854897, "cpu_us": 156.81377499999982, "logit_max_abs": 5.7220458984375e-06, "argmax_agree": 1.0, "version": "1.6.0", "torch": "2.15.0+cpu", "file_bytes": 843816, "delegate": "xnnpack", "threads": 1, "maxrss_mb": 627.30078125, "trial": 1}

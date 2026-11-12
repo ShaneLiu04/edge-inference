@@ -39,7 +39,7 @@ METRICS = [
     ("edge-runtime/conv-kernels", "gflops_resnet_3x3_14_implicit_gemm", "3×3 conv 14² implicit GEMM", "GFLOP/s"),
     ("edge-runtime/conv-kernels", "gflops_resnet_3x3_14_winograd_f2x3", "3×3 conv 14² Winograd F(2,3)", "GFLOP/s"),
     ("edge-runtime/conv-kernels", "gflops_mbv2_dw_56_dw_nhwc_simd", "depthwise 56² NHWC SIMD", "GFLOP/s"),
-    ("edge-runtime/dma-double-buffer", "tile64k_work4:speedup", "双缓冲实测加速（64 KiB tile，work=4）", "×"),
+    ("edge-runtime/dma-double-buffer", "tile64k_work4:speedup", "双缓冲实测加速（64 KiB tile × 512，work=4）", "×"),
     ("edge-runtime/dma-double-buffer", "tile64k_work4:model_speedup", "双缓冲模型预测（同上）", "×"),
     ("edge-runtime/dma-double-buffer", "tile1024k_work4:speedup", "双缓冲实测加速（1 MiB tile，work=4）", "×"),
     ("mlc/tensor-program-tuning", "square_256.overall_best_gflops", "256³ 调度搜索最优", "GFLOP/s"),
@@ -124,7 +124,7 @@ def main() -> None:
         "手写 intrinsics 的版本两边都稳定，这就是手写的理由。",
         "4. **Winograd 的收益依赖主机。** 本地在 56² 上 Winograd 比 implicit GEMM 快 16%，服务器上反而慢 32%（54 对 80）；"
         "14² 上本地快 2.1 倍、服务器快 3.0 倍。56² 时变换的额外访存在更快的 GEMM 面前显得更贵。",
-        "5. **软件双缓冲在服务器上全部变慢。** 64 KiB / work=4 时本地 0.96 倍、服务器 0.71 倍，"
+        "5. **软件双缓冲在服务器上全部变慢。** 64 KiB × 512 块、work=4 时本地 1.08 倍、服务器 0.70 倍，"
         "而模型预测 1.6 倍：拷贝线程与计算线程"
         "共享同一插槽的带宽与 cgroup 配额，并不是独立 DMA 引擎。"
         "模型只在拷贝真正不占计算资源时成立（MCU 的 DMA、GPU 的 copy engine）。",

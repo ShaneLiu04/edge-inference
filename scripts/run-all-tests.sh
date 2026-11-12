@@ -13,6 +13,7 @@ SUITES=(
   "edge-runtime dma-double-buffer|solutions/edge-runtime/dma-double-buffer/tests"
   "edge-runtime q4-gemv|solutions/edge-runtime/q4-gemv/tests"
   "edge-runtime llama-cpp-7b|solutions/edge-runtime/llama-cpp-7b/tests"
+  "edge-runtime runtime-compare|solutions/edge-runtime/runtime-compare/tests"
   "mit6.5940 lab2-quantization|solutions/mit6.5940/lab2-quantization/tests"
   "mit6.5940 tinyengine-memory|solutions/mit6.5940/tinyengine-memory/tests"
   "mlc tensor-program-tuning|solutions/mlc/tensor-program-tuning/tests"
