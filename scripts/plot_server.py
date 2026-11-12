@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import csv
 import json
-import math
 from collections import defaultdict
 from pathlib import Path
 
@@ -53,7 +52,8 @@ def roofline_scaling() -> None:
         pts = sorted((r["bytes"], r["GBps"]) for r in xr if r["kind"] == "bw" and r["kernel"] == "read" and r["threads"] == t)
         a.plot([p[0] for p in pts], [p[1] for p in pts], color=C[i], marker=".", lw=1.4, label=f"Xeon, {t} thr")
     for t, ls in ((1, "--"), (4, ":")):
-        pts = sorted((r["bytes"], r["GBps"]) for r in lr if r.get("kind") == "bw" and r.get("kernel") == "read" and r["threads"] == t)
+        pts = sorted((r["bytes"], r["GBps"]) for r in lr
+                     if r.get("kind") == "bw" and r.get("kernel") == "read" and r["threads"] == t)
         if pts:
             a.plot([p[0] for p in pts], [p[1] for p in pts], color="0.4", ls=ls, lw=1.2, label=f"local VM, {t} thr")
     for size, name in ((48 << 10, "L1 48K"), (2 << 20, "L2 2M"), (105 << 20, "L3 105M")):
@@ -100,7 +100,6 @@ def amx_vs_k() -> None:
     shapes = sorted(g, key=lambda s: shape_k[s])
     k = np.array([shape_k[s] for s in shapes])
     ratio = np.array([g[s]["int8_amx_tile"] / g[s]["int8_vnni_packed"] for s in shapes])
-    fill = k / (64 * np.ceil(k / 64))
     fig, (a, b) = plt.subplots(1, 2, figsize=(11, 4))
     a.scatter(k, ratio, color=C[3], zorder=3, s=36, label="measured AMX / VNNI-packed")
     offsets = {"square_512": (-58, 6), "mbv2_pw_project_14": (6, -10), "llm_prefill_256x4096x4096": (-92, -4)}

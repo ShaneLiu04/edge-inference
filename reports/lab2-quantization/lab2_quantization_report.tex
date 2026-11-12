@@ -11,7 +11,7 @@
 
 \begin{abstract}
 MIT 6.5940（TinyML and Efficient Deep Learning）Lab 2 在 VGG 上做 k-means 与线性量化。本报告把它换成部署链路上真正会遇到的问题：
-在 CIFAR-10 上训练一个 20.9 万参数、857 万 MAC 的 MobileNetV2 式网络（倒残差、ReLU6、线性瓶颈、残差），
+在 CIFAR-10~\cite{cifar} 上训练一个 20.9 万参数、857 万 MAC 的 MobileNetV2~\cite{mobilenetv2} 式网络（倒残差、ReLU6、线性瓶颈、残差），
 依次研究 BN 折叠、权重粒度、5 种激活校准器、逐点误差定位、按敏感度的混合精度、QAT 与 ONNX Runtime 落地。
 单次实验在 4 核 CPU 上完成；为了把结论放进置信区间，又在 RTX 6000D 上重训 5 个种子，并在服务器 CPU 上对每个模型重跑全部量化实验。
 
@@ -42,7 +42,7 @@ MIT 6.5940（TinyML and Efficient Deep Learning）Lab 2 在 VGG 上做 k-means �
 \toprule
 步骤 & 内容 \\
 \midrule
-BN 折叠 & $W' = \gamma W/\sigma$，$b' = \gamma(b-\mu)/\sigma + \beta$；fp32 88.16\% → 88.16\%，logits 最大差 $4.9\times10^{-6}$ \\
+BN 折叠~\cite{jacob2018} & $W' = \gamma W/\sigma$，$b' = \gamma(b-\mu)/\sigma + \beta$；fp32 88.16\% → 88.16\%，logits 最大差 $4.9\times10^{-6}$ \\
 权重粒度 & 逐张量 / 逐通道 / 逐通道但 depthwise 逐张量，W8/W6/W4 \\
 激活校准 & minmax、percentile 99.99、MSE、KL（TensorRT 式 2048 bin → 128 级）、KL 去零 bin；512 张校准图 \\
 误差定位 & 一次只量化一个点；沿深度的逐点 SQNR；逐层单独 W4 的敏感度 \\
@@ -98,7 +98,7 @@ KL（去掉精确零） & 88.06 & 87.97 & 15 s \\
 \end{table}
 
 \subsection{机制}
-TensorRT 式 KL 校准把激活直方图分成 2048 个 bin，对每个候选截断点 $i$（$i \ge 128$），把前 $i$ 个 bin 合并成 128 组得到量化后的分布 $Q$，
+TensorRT 式 KL 校准~\cite{migacz2017} 把激活直方图分成 2048 个 bin，对每个候选截断点 $i$（$i \ge 128$），把前 $i$ 个 bin 合并成 128 组得到量化后的分布 $Q$，
 与截断（尾部质量折叠进最后一个 bin）后的原分布 $P$ 比较，取 $\mathrm{KL}(P\|Q)$ 最小的 $i$。合并时，每组的质量平均分给组内\emph{非零}的 bin。
 
 ReLU6 之后，相当比例的激活恰好是 0，全部落在第 0 个 bin，质量为 $p_0$。第 0 组包含 $i/128$ 个 bin，合并后 $Q$ 把 $p_0$ 摊给组内所有非零 bin，
@@ -164,12 +164,12 @@ ORT 的 Entropy 校准默认参数下不掉点，但那是因为它根本没做�
 
 \section{QAT 与部署}
 
-W4A8 QAT 从 PTQ 的 83.04\% 起步，三个 epoch 后 87.49 → 87.50 → 87.63\%，每个 epoch 约 110 s。STE 只在裁剪区间内传梯度：
+W4A8 QAT 从 PTQ 的 83.04\% 起步，三个 epoch 后 87.49 → 87.50 → 87.63\%，每个 epoch 约 110 s。STE~\cite{bengio2013} 只在裁剪区间内传梯度~\cite{krishnamoorthi2018}：
 $\partial \hat{x}/\partial x = \mathbb{1}[q_{\min}\le x/s \le q_{\max}]$，区间外梯度为 0，否则被裁剪的权重会被推得更远。
 
 \begin{table}[H]
 \centering\small
-\caption{ONNX Runtime 1.31 部署（batch 1，1 线程）}\label{tab:ort}
+\caption{ONNX Runtime~\cite{ort} 1.31 部署（batch 1，1 线程）}\label{tab:ort}
 \begin{tabular}{lrrr}
 \toprule
 模型 & 精度 \% & 延迟 µs & 文件 KiB \\
@@ -314,5 +314,15 @@ python scripts/run_experiments.py --threads 4 --ckpt checkpoints/seeds/micronet_
 python scripts/run_experiments.py --threads 1 --ckpt checkpoints/seeds/micronet_s3.pt --out artifacts/seeds/s3 --only ort
 python scripts/seed_summary.py
 \end{lstlisting}
+
+\begin{thebibliography}{99}
+\bibitem{cifar} A. Krizhevsky. Learning Multiple Layers of Features from Tiny Images. Technical report, University of Toronto, 2009.
+\bibitem{mobilenetv2} M. Sandler, A. Howard, M. Zhu, A. Zhmoginov, L.-C. Chen. MobileNetV2: Inverted Residuals and Linear Bottlenecks. In \emph{CVPR}, 2018.
+\bibitem{jacob2018} B. Jacob, S. Kligys, B. Chen, M. Zhu, M. Tang, A. Howard, H. Adam, D. Kalenichenko. Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference. In \emph{CVPR}, 2018.
+\bibitem{migacz2017} S. Migacz. 8-bit Inference with TensorRT. GPU Technology Conference, 2017.
+\bibitem{bengio2013} Y. Bengio, N. L\'eonard, A. Courville. Estimating or Propagating Gradients Through Stochastic Neurons for Conditional Computation. arXiv:1308.3432, 2013.
+\bibitem{krishnamoorthi2018} R. Krishnamoorthi. Quantizing Deep Convolutional Networks for Efficient Inference: A Whitepaper. arXiv:1806.08342, 2018.
+\bibitem{ort} ONNX Runtime developers. ONNX Runtime. \url{https://onnxruntime.ai}, version 1.31.
+\end{thebibliography}
 
 \end{document}

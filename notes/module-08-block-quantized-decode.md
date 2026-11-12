@@ -2,9 +2,9 @@
 
 - 课程出处：llama.cpp / ggml 的块量化格式与 `vec_dot_q4_0_q8_0` · MIT 6.5940 Fall 2024《LLM Deployment Techniques》《TinyChat》 · MLC LLM 的权重量化
 - 必读论文：Frantar et al., GPTQ, 2023；Lin et al., AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration, 2024；Dettmers & Zettlemoyer, The case for 4-bit precision: k-bit Inference Scaling Laws, 2023
-- 对应实验：[q4-gemv](../solutions/edge-runtime/q4-gemv/README.md)
-- 实测结论：7B 形状 4096×4096 的 GEMV 单线程 fp32 4763 µs，Q4_0 × Q8 VNNI 1034 µs（4.6 倍，字节少 7.1 倍），实际带宽只有 9.1 GB/s，被解包指令限住；先反量化再点积 4541 µs，与 fp32 差不多；单线程 Q8 × Q8 1009 µs 已与 Q4 持平，4 线程时 275 µs 快过 Q4 的 311 µs。GPT-2 124M 在 wikitext-2 全部 280 个窗口上 fp32 29.95，Q8_0 29.95，Q4_0 31.88，Q4_1 32.15；Q4_1 的层平均 SQNR 更高（21.96 vs 21.03 dB）但困惑度更差
-- 状态：已验证（数字来自 `artifacts/raw/summary.json`、`gemv_bench.csv`、`gpt2_ppl.csv`，`claims.json` 校验）
+- 对应实验：[q4-gemv](../solutions/edge-runtime/q4-gemv/README.md)（单层 GEMV 与解码预测）、[llama-cpp-7b](../solutions/edge-runtime/llama-cpp-7b/README.md)（llama.cpp 跑完整 Qwen2.5-7B，检验预测）
+- 实测结论：7B 形状 4096×4096 的 GEMV 单线程 fp32 4763 µs，Q4_0 × Q8 VNNI 1034 µs（4.6 倍，字节少 7.1 倍），实际带宽只有 9.1 GB/s，被解包指令限住；先反量化再点积 4541 µs，与 fp32 差不多；单线程 Q8 × Q8 1009 µs 已与 Q4 持平，4 线程时 275 µs 快过 Q4 的 311 µs。GPT-2 124M 在 wikitext-2 全部 280 个窗口上 fp32 29.95，Q8_0 29.95，Q4_0 31.88，Q4_1 32.15；Q4_1 的层平均 SQNR 更高（21.96 vs 21.03 dB）但困惑度更差。完整 Qwen2.5-7B（llama.cpp，Xeon 8470Q + RTX 6000D）：CPU 16 线程 Q4_0 37.4、Q8_0 22.0 tok/s，4 线程时「Q8 更快」在真模型上反转；端到端比只算 Linear 的预测多一个与格式无关的 0.41–0.47 ms/token；CPU 上 K-quant 只到带宽线的 44–56%，GPU 上 Q4_K_M 仍有 75%
+- 状态：已验证（数字来自 q4-gemv 的 `artifacts/raw/summary.json`、`gemv_bench.csv`、`gpt2_ppl.csv` 与 llama-cpp-7b 的 `artifacts/raw/summary.json`，`claims.json` 校验）
 
 ## 摘要
 
@@ -139,7 +139,30 @@ Q8 × Q8 每块读 34 B 但不用拆半字节，单线程 1009 µs、17.7 GB/s�
 
 4 线程把带宽扩到 48 GB/s 以上，Q8 的瓶颈仍是带宽，Q4 的瓶颈仍是每核指令，扩展更差（3.32 vs 3.66 倍），于是 275 µs 对 311 µs，Q8 更快。
 但 Q8 的 64.7 GB/s 超过了 DRAM 流式带宽，含有 L3 命中。7B 模型全部权重流过 DRAM 时，Q8 最多 48.4 GB/s → 7.16 GB / 48.4 = 148 ms/token（6.8 tok/s），而 Q4 在 30.3 GB/s 时仍低于 DRAM 上限 → 3.79 / 30.3 = 125 ms/token（8.0 tok/s）。
-所以「4 线程 Q8 更快」只在矩阵能部分驻留缓存时成立；对真实大模型，结论很可能回到 Q4 更快。本仓库没有测完整 7B 模型，这一段是推算。
+所以「4 线程 Q8 更快」只在矩阵能部分驻留缓存时成立；对真实大模型，结论很可能回到 Q4 更快。
+后来在 Xeon 8470Q 上用 llama.cpp 跑完整的 Qwen2.5-7B 证实了反转：1 线程 Q4_0 3.97、Q8_0 2.51 tok/s，16 线程 37.4 对 22.0。
+
+### 真实 7B：层时间之和差一个常数，K-quant 在 CPU 上受指令限
+
+[llama-cpp-7b](../solutions/edge-runtime/llama-cpp-7b/README.md) 拿完整模型检验了本讲的两个模型。
+
+第一个是「层时间之和」。q4-gemv 在 RTX 6000D 上只计时 Qwen2.5-7B 的 196 个 Linear（CUDA graph），把它当成解码时间的预测；llama.cpp 在同一张卡上端到端实测：
+
+```text
+              只算 Linear 的预测       llama.cpp 实测        差
+fp16 / F16    91.7 tok/s（10.91 ms）  87.9（11.38 ms）     0.47 ms
+Q8 / Q8_0     163  tok/s（6.13 ms）   152.8（6.54 ms）     0.41 ms
+Q4_0          283.7 tok/s（3.52 ms）  250.7（3.99 ms）     0.46 ms
+```
+
+三种格式差的都是 0.41–0.47 ms，与权重字节无关。这是 Linear 以外的每 token 固定成本：28 层的 attention、RMSNorm、RoPE、残差、采样和图调度。
+所以 E25 在结构上是对的，只缺一个常数项 c：t_token = Σ 层时间 + c。权重越小 c 占比越大（F16 4%，Q4_0 12%），这也是 GPU 上带宽利用率从 F16 的 93% 降到 Q2_K 64% 的原因。
+
+第二个是「字节少就快」。CPU 上它对简单格式成立：Q8_0、Q4_0、Q4_1 到 DRAM 读（193.5 GB/s）的 74–85%。K-quant 不成立：Q2_K 读的字节只有 Q4_0 的 68%，解码反而慢 19%；
+Q4_K_M 只比 Q4_0 多 5% 字节，慢 33%，只到 DRAM 读的 56%。K-quant 每 256 个权重有两级 scale，解包要多做移位、取子块 scale、乘子块 scale，和本讲 Q4 内核卡住的是同一类每块固定开销。
+GPU 上每字节的 ALU 多得多，解包被访存延迟藏住，Q4_K_M 仍在带宽线的 75%。容器里没有 perf 权限，「指令受限」是由字节与速度的反常推出的。
+
+llama.cpp 默认配置单线程 Q4_0 读到 16.3 GB/s，比本仓库 Q4 内核的 9–12 GB/s 高：它在加载时把 Q4_0 / Q8_0 重排成 AMX 需要的布局（`--repack 0` 时 16 线程解码从 37.0 掉到 26.5 tok/s），每块的解包指令更少。本讲练习里「减少每块的 shuffle」就是朝这个方向。
 
 ### SQNR 与困惑度为什么不一致
 
@@ -167,6 +190,7 @@ GPT-2 124M：权重约 0.25 GB（fp16），Q4_0 0.070 GB
 | 带宽与上界 | `scripts/run_experiments.py` `decode_bound` | `decode_bound.csv` 每格式 × 设备一行 |
 | GPT-2 困惑度 | `code/blockq/gpt2.py`、`run_experiments.py --only gpt2` | 280 个窗口，fp32 与 mlsys-infra 的 fp16 29.96 一致 |
 | 图 | `artifacts/figures/gemv_bench.png` | 每个形状 × 方法的 GB/s，1 与 4 线程 |
+| 整模型检验 | llama-cpp-7b 的 `scripts/run_experiments.py`（`prep`、`cpu`、`gpu`、`batched`、`summarize`），`code/lcpp/parse.py` | 解析器用真实输出片段测试；`summary.json` 的数字进 `claims.json` |
 
 ## 易错点与反例
 
@@ -206,6 +230,10 @@ GPT-2 124M：权重约 0.25 GB（fp16），Q4_0 0.070 GB
    答：Q4_0 是格式加 RTN；GPTQ 是在同样格式下用二阶信息逐列补偿误差。mlsys-infra 的 GPT-2 上 W4 g128：RTN 33.27 → GPTQ 31.20；本仓库 g32 RTN 31.88，分组更细抵掉了大部分差距，代价是每权重多 0.375 bit。
 6. 问：这和数据中心推理的什么问题同形？
    答：mlsys-infra M15/M16 的解码同样被带宽限住，batch 才是把 GEMV 变成 GEMM 的手段；端侧通常 batch 1，只能靠减字节。
+7. 问：你的单层预测和真实引擎差多少？差在哪？
+   答：同一张 RTX 6000D 上三种格式都只差一个 0.41–0.47 ms/token 的常数，是 Linear 以外的 attention、归一化、采样和调度。Q4 解码要再快，该优化这 0.45 ms，不是 GEMV。
+8. 问：手机 CPU 上选 Q4_0 还是 Q4_K_M？
+   答：看指令受不受限。Xeon 上 Q4_K_M 解码慢 33%，KL 散度却只有 Q4_0 的 0.55 倍；更弱的端侧核指令受限更严重，Q4_0 的速度优势更大。质量要求高时选 Q4_K_M + imatrix，接受只用到一半带宽。
 
 ## 自测题
 
@@ -231,6 +259,7 @@ GPT-2 124M：权重约 0.25 GB（fp16），Q4_0 0.070 GB
 解码是 GEMV，token/s 的天花板就是带宽除以权重字节，块量化把这个天花板抬高 3.6–7.1 倍。
 能不能碰到天花板取决于内核：先反量化毫无收益，浮点融合拿到一半，整数点积单线程拿到字节比的 65%，剩下的被每块的解包指令吃掉。
 精度上 Q8_0 无损、Q4_0 g32 掉 6.4%；格式之间要看困惑度而不是 SQNR。
+换到完整的 7B 模型，层时间之和的预测只差一个常数；字节少就快只对简单格式成立，CPU 上 K-quant 被解包指令限住，GPU 上不受限，两种硬件该选的 4-bit 格式相反。
 
 ## 延伸阅读
 

@@ -1,10 +1,11 @@
 # 贡献约定
 
-和 [mlsys-infra](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/CONTRIBUTING.md) 同一套规则。改动合入前本地跑两条命令，CI 跑同样的两条：
+和 [mlsys-infra](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/CONTRIBUTING.md) 同一套规则。改动合入前本地跑三条命令，CI 跑同样的三条：
 
 ```powershell
-./scripts/check-repo.ps1      # 笔记结构、Markdown 链接、lab 布局、claims、密钥
-./scripts/run-all-tests.ps1   # 9 个测试套件，各自一个 pytest 进程
+./scripts/check-repo.ps1      # 笔记结构、Markdown 链接、lab 布局、claims、报告、密钥
+./scripts/run-all-tests.ps1   # 10 个测试套件，各自一个 pytest 进程
+python -m ruff check .
 ```
 
 Linux 上用 `PYTHON=python3 ./scripts/run-all-tests.sh`。想模拟只有 AVX2 的机器（CI 的 runner 通常如此），设 `EDGE_MARCH=haswell` 再跑测试，所有 C++ 会按该 ISA 重新编译，AVX-512/VNNI 专属的方法自动不参与比较。
@@ -42,6 +43,12 @@ solutions/<course>/<lab>/
 - Python 用 ruff（`python -m ruff check .`，规则见 `pyproject.toml`）。
 - C++17，`-O3 -march=native`；ISA 专属代码放在 `#if defined(__AVX512VNNI__)` 一类守卫里，并提供可移植回退。
 - Windows/MinGW 下 AVX-512 栈只按 16 字节对齐，`edge_harness.cpp` 自动加 `-Wa,-muse-unaligned-vector-move`；不要在 lambda 里按值捕获 `__m512i`。
+
+## 报告
+
+- 放在 `reports/<lab>/<lab>_report.tex`，`\input{../common/preamble.tex}`，图直接用实验的 `artifacts/figures/`（`\graphicspath`），不另拷一份。
+- 结构：要回答什么 → 设置 → 推导 → 逐张解读图 → 面试追问（`iqbox`）→ 结论（`findingbox`）→ 不能推出的结论（`caveatbox`）→ 复现；末尾 `thebibliography`，每条都要被引用。
+- 编译：`latexmk -xelatex <name>.tex`；只提交 `.tex` 和 `.pdf`，中间文件已在 `.gitignore`。`python scripts/check_reports.py` 不需要 TeX。
 
 ## 不入库
 

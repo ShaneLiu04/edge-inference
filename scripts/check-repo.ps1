@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
   Structural checks: notes validator, relative links in every Markdown file, lab layout,
-  published numbers against raw files, and a scan for secrets that must never be committed.
+  published numbers against raw files, LaTeX reports (PDF present, figures resolve, every
+  reference cited), and a scan for secrets that must never be committed.
 #>
 param([string]$Python = "python")
 
@@ -41,6 +42,10 @@ Write-Host "  $($labs.Count) labs checked"
 
 Write-Host "== published numbers =="
 & $Python (Join-Path $root "scripts/check_claims.py")
+if ($LASTEXITCODE -ne 0) { $fail++ }
+
+Write-Host "== reports =="
+& $Python (Join-Path $root "scripts/check_reports.py")
 if ($LASTEXITCODE -ne 0) { $fail++ }
 
 Write-Host "== secrets =="

@@ -181,7 +181,7 @@ Q8_0 的 tg 两行来自单独重跑（`bench_cpu_repack_q8_rerun.jsonl`，-r 5�
 
 - CPU 数字来自 cgroup 限 22 核、宿主上有其他租户的容器；16 线程的个别点可能被限流。
 - 「每 token 读的字节」按文件大小减去 token_embd 估算，没有扣除 KV cache 的读取，也没有区分 output.weight 与其他张量的类型；百分比是近似值。
-- 困惑度协议是 llama-perplexity 的 ctx 512，与 mlsys-infra compiler-compression 的 HF 协议（ctx 2048、stride）不同，两边的数字不能直接比较。
+- 困惑度协议是 llama-perplexity 的 ctx 512，与 mlsys-infra compiler-compression 的 HF 协议（ctx 1024）不同，两边的数字不能直接比较。
 - KL 只用前 80 个 chunk；同 top-1 比例的标准误约 0.1–0.2 个百分点。
 - Q2_K+imatrix 的量化日志没有落盘（预取脚本等磁盘空间时由主流程自己量化），`quant_sizes.csv` 里它的 bpw 取自 Q2_K：
   imatrix 只改变选哪个量化值，不改变存储布局（两个文件只差 224 字节的元数据，Q4_K_M 那一对也一样）。

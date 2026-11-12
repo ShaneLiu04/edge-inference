@@ -1,6 +1,5 @@
 \documentclass[11pt,a4paper]{ctexart}
 \input{../common/preamble.tex}
-\newcommand{\lab}[1]{../../solutions/edge-runtime/#1/artifacts/figures}
 
 \title{端侧推理内核的跨平台复现报告：\\从 4 核 Ice Lake 虚拟机到 Sapphire Rapids 服务器与 RTX 6000D}
 \author{\authorline}
@@ -72,7 +71,7 @@ GPU 作业通过一个串行队列执行，任何两个 GPU 计时都不重叠�
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{\lab{host-roofline}/xeon8470q/thread_scaling.png}
+\includegraphics[width=\linewidth]{../../solutions/edge-runtime/host-roofline/artifacts/figures/xeon8470q/thread_scaling.png}
 \caption{左：每条线程数的读带宽随工作集变化（灰色虚线为本地 VM）；右：16 线程内的加速比。}\label{fig:scaling}
 \end{figure}
 
@@ -100,12 +99,12 @@ GPU 作业通过一个串行队列执行，任何两个 GPU 计时都不重叠�
 
 计算峰值几乎线性：fp32 从 232 到 3167 GFLOP/s（13.7 倍），int8 从 617 到 9208 GOP/s（14.9 倍）。由 1 线程 fp32 232 GFLOP/s 反推
 $232/64 = 3.6$ GHz（单核睿频，两个 512 位 FMA 端口 × 16 lane × 2 FLOP），16 线程每核 198 GFLOP/s 对应 3.1 GHz。
-因为计算扩展得比带宽快，拐点（屋顶上算力与带宽相交的强度）随线程数从 13.3 升到 16.4 FLOP/B——\emph{多核让更多的层变成带宽受限}。
+因为计算扩展得比带宽快，拐点（roofline~\cite{roofline} 上算力与带宽相交的强度）随线程数从 13.3 升到 16.4 FLOP/B——\emph{多核让更多的层变成带宽受限}。
 
 \begin{iqbox}{服务器内存带宽有几百 GB/s，为什么单线程解码 7B 模型还是很慢？}
 那几百 GB/s 是整个插槽所有内存通道并发时的数字。单线程只能靠自己核里的十几个在途缺失请求去拉数据，按 Little 定律
 $B_{\text{core}} \approx N_{\text{inflight}} \times 64\,\text{B} / t_{\text{lat}}$，延迟约 100 ns 时上限就是二十 GB/s 左右；本机实测 17.5 GB/s。
-llama.cpp 单线程解码 Qwen2.5-7B Q4\_0 实测 3.97 tok/s，乘以每 token 读的 4.1 GB 权重（文件 4.43 GB 减去解码不读的嵌入表）是 16.3 GB/s，单核带宽的 93\%：单线程解码就是在测单核带宽。
+llama.cpp~\cite{llamacpp} 单线程解码 Qwen2.5-7B Q4\_0 实测 3.97 tok/s，乘以每 token 读的 4.1 GB 权重（文件 4.43 GB 减去解码不读的嵌入表）是 16.3 GB/s，单核带宽的 93\%：单线程解码就是在测单核带宽。
 \end{iqbox}
 
 \section{int8 GEMM：VNNI、AMX 与 epilogue}\label{sec:int8}
@@ -135,7 +134,7 @@ llm\_prefill 256×4096×4096 & 18.4 & 19.9 & 280.1 & 280.3 & 1658.7 & 1453.1 \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{\lab{int8-kernels}/xeon8470q/amx_vs_k.png}
+\includegraphics[width=\linewidth]{../../solutions/edge-runtime/int8-kernels/artifacts/figures/xeon8470q/amx_vs_k.png}
 \caption{左：AMX 对 VNNI 打包的加速比随 K 变化，虚线为只考虑补零的上界；右：单独一遍 SIMD requant 造成的吞吐损失。}\label{fig:amx}
 \end{figure}
 
@@ -191,7 +190,7 @@ GCC 13 把 \texttt{int32 += u8 * s8} 的循环识别成了 VNNI 点积模式，G
 \end{tabular}}
 \end{table}
 
-Winograd F(2,3) 把每个输出 tile 的乘法减少到 $16/36$（2.25 倍），代价是输入、输出两次变换。变换是逐 tile 的加减与散布写，
+Winograd F(2,3)~\cite{lavin2016} 把每个输出 tile 的乘法减少到 $16/36$（2.25 倍），代价是输入、输出两次变换。变换是逐 tile 的加减与散布写，
 受访存与标量开销限制，从本地到服务器只快 1.4 倍；而 implicit GEMM 在服务器上快了 2.3 倍（更大的 L2、两个 512 位 FMA 端口）。
 设 GEMM 部分的时间为 $t_g$、变换时间为 $t_x$，Winograd 的收益是 $t_g / (t_g/2.25 + t_x)$：当 GEMM 变快、$t_x$ 不变时收益缩小，直至小于 1。
 $56^2$ 层通道只有 64，变换的比重高，于是翻转；$14^2$ 层 $K = C\times9 = 2304$ 较大但空间小，GEMM 效率本身偏低，减少乘法仍然划算（3.0 倍，超过理论的 2.25；
@@ -205,7 +204,7 @@ $56^2$ 层通道只有 64，变换的比重高，于是翻转；$14^2$ 层 $K = 
 
 \section{DMA 双缓冲：CPU 上的软件流水为何失效}\label{sec:dma}
 
-dma-double-buffer lab 先用闭式模型和事件模拟分析 MCU / PULP 上的 tile 级双缓冲，再在 CPU 上用“一个线程拷贝、一个线程计算”实测。
+dma-double-buffer lab 先用闭式模型和事件模拟分析 MCU / PULP（Dory~\cite{dory}）上的 tile 级双缓冲，再在 CPU 上用“一个线程拷贝、一个线程计算”实测。
 模型的加速比为
 \[
   S = \frac{n(t_c + t_m)}{t_m + (n-1)\max(t_c,t_m) + t_c},
@@ -228,7 +227,7 @@ dma-double-buffer lab 先用闭式模型和事件模拟分析 MCU / PULP 上的 
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\linewidth]{\lab{dma-double-buffer}/xeon8470q/model_vs_measured.png}
+\includegraphics[width=0.8\linewidth]{../../solutions/edge-runtime/dma-double-buffer/artifacts/figures/xeon8470q/model_vs_measured.png}
 \caption{模型预测与两台主机的实测。}\label{fig:dma}
 \end{figure}
 
@@ -266,13 +265,15 @@ pw\_expand\_14 & 84.5 → 112.4 & 95.4 → 166.1 & 0.53 → 0.56 & 111.1 & \text
   \item \textbf{向量宽度翻转}。本地 Ice Lake 上 512 位只有 1/8 的调度更快、中位数慢 12\%；服务器上前 8 名全部更快，最优 173 对 115。
         SPR 的 AVX-512 降频档位更温和，且有两个完整的 512 位 FMA 端口。\texttt{-mprefer-vector-width=512} 本身就是一个需要按目标机器搜索的旋钮。
   \item \textbf{最优调度换位置}。本地前 8 名多是 \texttt{ikji}/\texttt{ijki} 内层、64 宽的 tile；服务器前 8 名有 7 个是 \texttt{iikj} 内层、32×8 tile。
-        这就是 AutoTVM / Ansor 必须在目标设备上测量、并为每种硬件分别保存调优日志的原因。
+        这就是 AutoTVM~\cite{autotvm} / Ansor~\cite{ansor} 必须在目标设备上测量、并为每种硬件分别保存调优日志的原因。
 \end{itemize}
 搜索器最优仍低于 NumPy/OpenBLAS（115 对 161）：模板里没有 B 的打包和 K 方向的寄存器分块，搜索只能在给定空间内找最优，空间本身决定上限。
 
 \section{Q4 GEMV：CPU 指令受限，GPU 带宽受限}\label{sec:gemv}
 
 \subsection{CPU：Q4 的字节优势被解包吃掉}
+
+Q4\_0 / Q8\_0 的块布局与 ggml~\cite{llamacpp} 逐字节一致；GPU 侧的融合反量化内核用 Triton~\cite{triton} 编写。
 
 \begin{table}[H]
 \centering\small
@@ -301,7 +302,7 @@ Q4\_0 × Q8 VNNI & 2057 & 523 & 158 & 161 \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{\lab{q4-gemv}/gemv_gpu_roofline.png}
+\includegraphics[width=\linewidth]{../../solutions/edge-runtime/q4-gemv/artifacts/figures/gemv_gpu_roofline.png}
 \caption{左：每次 GEMV 的时间对读取字节数（实心 = CUDA graph，空心 = eager），虚线为 bytes / 1333 GB/s；右：只算 Linear 的 Qwen2.5-7B 解码预测。}\label{fig:gemvgpu}
 \end{figure}
 
@@ -416,5 +417,15 @@ cd ../q4-gemv && python gpu/bench_gpu.py check && python gpu/bench_gpu.py all
 # 汇总与作图（本地即可）
 python scripts/compare_hosts.py && python scripts/plot_server.py
 \end{lstlisting}
+
+\begin{thebibliography}{99}
+\bibitem{roofline} S. Williams, A. Waterman, D. Patterson. Roofline: An Insightful Visual Performance Model for Multicore Architectures. \emph{Communications of the ACM}, 52(4), 2009.
+\bibitem{lavin2016} A. Lavin, S. Gray. Fast Algorithms for Convolutional Neural Networks. In \emph{CVPR}, 2016.
+\bibitem{dory} A. Burrello, A. Garofalo, N. Bruschi, G. Tagliavini, D. Rossi, F. Conti. DORY: Automatic End-to-End Deployment of Real-World DNNs on Low-Cost IoT MCUs. \emph{IEEE Transactions on Computers}, 70(8), 2021.
+\bibitem{autotvm} T. Chen, L. Zheng, E. Yan, Z. Jiang, T. Moreau, L. Ceze, C. Guestrin, A. Krishnamurthy. Learning to Optimize Tensor Programs. In \emph{NeurIPS}, 2018.
+\bibitem{ansor} L. Zheng, C. Jia, M. Sun, Z. Wu, C. H. Yu, A. Haj-Ali, Y. Wang, J. Yang, D. Zhuo, K. Sen, J. E. Gonzalez, I. Stoica. Ansor: Generating High-Performance Tensor Programs for Deep Learning. In \emph{OSDI}, 2020.
+\bibitem{llamacpp} G. Gerganov et al. llama.cpp / ggml. \url{https://github.com/ggml-org/llama.cpp}, 2026.
+\bibitem{triton} P. Tillet, H. T. Kung, D. Cox. Triton: An Intermediate Language and Compiler for Tiled Neural Network Computations. In \emph{MAPL}, 2019.
+\end{thebibliography}
 
 \end{document}

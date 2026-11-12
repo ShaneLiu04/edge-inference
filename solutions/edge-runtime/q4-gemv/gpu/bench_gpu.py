@@ -140,8 +140,8 @@ def _methods(n: int, k: int, cold: bool):
     w16 = torch.from_numpy(w).cuda().half()
     c = _copies(w16.numel() * 2, cold)
     ws = [w16] + [w16.clone() for _ in range(c - 1)]
-    yield "cublas_fp16", w16.numel() * 2, c, lambda i: torch.mv(ws[i % c], x)
-    yield "triton_fp16", w16.numel() * 2, c, lambda i: tg.gemv_fp16(ws[i % c], x)
+    yield "cublas_fp16", w16.numel() * 2, c, lambda i, ws=ws, c=c: torch.mv(ws[i % c], x)
+    yield "triton_fp16", w16.numel() * 2, c, lambda i, ws=ws, c=c: tg.gemv_fp16(ws[i % c], x)
     del ws
     for fmt in ("q8_0", "q4_0"):
         p = tg.pack_for_gpu(w, fmt)

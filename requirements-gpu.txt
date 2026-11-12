@@ -1,0 +1,7 @@
+# GPU environment used for the RTX 6000D measurements (q4-gemv/gpu, sm_120 needs CUDA >= 12.8).
+# pip install -r requirements-gpu.txt --extra-index-url https://download.pytorch.org/whl/cu128
+# llama-cpp-7b additionally needs a llama.cpp build (commit 149f564; CPU with GGML_NATIVE=ON, CUDA with sm_120),
+# pointed to by the LLAMA_CPP environment variable.
+-r requirements.txt
+torch>=2.8
+triton>=3.4

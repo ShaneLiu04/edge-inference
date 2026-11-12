@@ -3,8 +3,8 @@
 - 课程出处：MIT 6.5940 Fall 2024《Quantization I / II》Lab 2 · TensorRT《8-bit Inference with TensorRT》(GTC 2017) · ONNX Runtime `quantization` 文档
 - 必读论文：Jacob et al., Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference, 2018；Krishnamoorthi, Quantizing deep convolutional networks for efficient inference: A whitepaper, 2018；Nagel et al., A White Paper on Neural Network Quantization, 2021
 - 对应实验：[lab2-quantization](../solutions/mit6.5940/lab2-quantization/README.md)
-- 实测结论：CIFAR-10 上 20.9 万参数的 MobileNetV2 式网络 fp32 88.16%；W8A8 用 minmax/percentile/MSE 校准都在 87.97–88.17%，TensorRT 式 KL 只有 63.68%（A6 时 16.3%），去掉精确零后的 KL 回到 88.06%；W4 逐通道 83.20%，逐张量 76.42%；按敏感度升 8 层到 W8（+9.5 KiB）回到 87.69%，3 个 epoch 的 QAT 回到 87.63%；ORT 1.31 的 Entropy 默认参数与 MinMax 完全相同，改成 2048 bin 真正搜索后反而掉到 87.17%
-- 状态：已验证（数字来自 `artifacts/raw/summary.json` 与各 CSV，`claims.json` 校验）
+- 实测结论：CIFAR-10 上 20.9 万参数的 MobileNetV2 式网络 fp32 88.16%；W8A8 用 minmax/percentile/MSE 校准都在 87.97–88.17%，TensorRT 式 KL 只有 63.68%（A6 时 16.3%），去掉精确零后的 KL 回到 88.06%；W4 逐通道 83.20%，逐张量 76.42%；按敏感度升 8 层到 W8（+9.5 KiB）回到 87.69%，3 个 epoch 的 QAT 回到 87.63%；ORT 1.31 的 Entropy 默认参数与 MinMax 完全相同，改成 2048 bin 真正搜索后反而掉到 87.17%。RTX 6000D 上重训 5 个种子后报配对差与 95% 置信区间：KL −24.55 ± 2.42、按敏感度混合精度 −0.63 ± 0.29（按参数量 −2.05 ± 0.54）、QAT −0.19 ± 0.16 都成立，但最敏感的那一层随种子变化
+- 状态：已验证（数字来自 `artifacts/raw/summary.json`、各 CSV 与 `artifacts/raw/seeds/seed_summary.csv`，`claims.json` 校验）
 
 ## 摘要
 
@@ -144,6 +144,30 @@ ONNX Runtime 1.31 的 `create_calibrator` 对 Entropy 默认 `num_bins = 128`、
 
 结果是 87.17%，比 MinMax 的 88.09% 低 0.92 个点。方向与本仓库的 KL 一致，幅度小得多：ORT 的直方图是对称的 [−t, t]（非负张量有一半 bin 为空），每次候选扩展两侧各一个 bin，量化 bin 数固定为 128，零尖峰被摊薄的程度不同。结论不变：熵校准用在 ReLU 输出上要先验证，不能当作默认更好的选项。
 
+### 五个种子：哪些结论经得起重训
+
+单次训练里 88% 附近 0.1 个点的差，落在单次评测的标准误（约 0.3 个点）以内，分不出是方法差异还是这一次训练的运气。
+所以在 RTX 6000D 上用同样的超参数重训 5 个种子，fp32 88.12 ± 0.18%，再对每个模型重跑全部量化实验。每个方法报告配对差 acc(方法) − acc(同一种子的 fp32)：
+
+```text
+配对差 d_s = acc_s(方法) − acc_s(fp32)，s = 1..5
+均值 ± 95% CI = mean(d) ± t(0.975, 4) · std(d) / √5，t = 2.776
+种子间约 0.2 个点的 fp32 波动在 d_s 里抵消，比 0.2 个点更小的方法差异也能分辨
+```
+
+| 方法 | 配对差（点） | 95% CI |
+| --- | ---: | ---: |
+| W8A8 minmax / MSE | +0.03 / +0.01 | ±0.06 / ±0.08 |
+| W8A8 KL（TensorRT 式） | −24.55 | ±2.42 |
+| W8A8 KL 去零 bin | −0.05 | ±0.08 |
+| W4 逐张量 / 逐通道 | −11.76 / −2.26 | ±4.26 / ±0.26 |
+| 混合精度升 8 层：按敏感度 / 按参数量 | −0.63 / −2.05 | ±0.29 / ±0.54 |
+| QAT W4A8，3 epoch | −0.19 | ±0.16 |
+
+读法有三条。KL 的崩溃是结构性的：5 个种子全部掉到 60.4–65.3%，KL 阈值中位数是 MSE 阈值的 0.267 ± 0.002 倍，几乎不随种子变化，因为它由 ReLU6 后的精确零决定。
+粒度不只影响均值，也影响可复现性：逐张量 W4 的置信区间是逐通道的 16 倍，哪个通道最大取决于这一次训练。
+混合精度按敏感度的优势稳定（区间不重叠，还少用 60 KiB），但最敏感的那一层并不固定：stem 2 次、第一个 depthwise 1 次、第二个块的 depthwise 2 次。敏感度排序必须对每个模型重测。
+
 ### QAT 恢复了什么
 
 W4A8 PTQ 83.04%，QAT 第 1 个 epoch 就到 87.49%，之后 87.50、87.63。大部分恢复发生在第一个 epoch：STE 让权重在量化格点附近重新排列，补偿的主要是逐通道舍入的系统偏差，而不是重新学特征。
@@ -180,6 +204,8 @@ SQNR 的量级：8 bit 满幅正弦的理论值 49.9 dB，实测单个激活点 
 - 用参数量排序做混合精度：升 8 个最大的层多花 78 KiB 只回到 83.62%，按敏感度升 8 层只多 9.5 KiB 就到 87.69%。
 - 把 SQNR 的绝对值当门槛：W8A8 的激活点只有 26–43 dB，远低于 50 dB 的理论值，但精度几乎不掉；要看的是相对 W8A8 基线从哪一层开始陡降。
 - depthwise 逐张量：每通道 9 个权重、通道间幅值差最大，W4 时比全逐通道多掉 1.1 个点。
+- 把一个模型的敏感度排序抄给另一个模型：5 个种子里最敏感的层换了 3 个位置。
+- 用单次训练的 0.1 个点差下结论：先报配对差和置信区间，KL 去零 bin 的 −0.05 ± 0.08 与 fp32 不可区分。
 
 ## 实验或练习
 
@@ -215,6 +241,8 @@ SQNR 的量级：8 bit 满幅正弦的理论值 49.9 dB，实测单个激活点 
    答：按单层敏感度降序升精度，画权重字节 vs 精度的曲线，在预算点上取。注意敏感度不可加（单独之和 4.23 vs 一起 4.96），曲线要实测，不能用加和预测。
 7. 问：最后还差 0.5 个点，要不要 QAT？
    答：看代价。QAT 需要训练数据和管线，3 个 epoch 在 4 核 CPU 上约 5.5 分钟，W4A8 回到 87.63%；如果 Flash 还有 10 KiB 余量，升层更便宜、可复现。
+8. 问：你这些结论是一次训练得到的，怎么知道不是运气？
+   答：重训 5 个种子，报配对差的 95% 置信区间。KL −24.55 ± 2.42、按敏感度对按参数量 −0.63 对 −2.05、QAT −0.19 ± 0.16 都成立；不成立的是「某一层最敏感」，它随种子变。
 
 ## 自测题
 

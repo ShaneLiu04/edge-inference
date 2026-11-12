@@ -3,7 +3,7 @@
 - 课程出处：PULP Dory / Deeploy 的分块与代码生成 · MIT 6.5940《TinyEngine》 · MLC《硬件加速》
 - 必读论文：Burrello et al., DORY: Automatic End-to-End Deployment of Real-World DNNs on Low-Cost IoT MCUs, 2021；Scherer et al., Deeploy, 2024；Lin et al., MCUNet, 2020
 - 对应实验：[dma-double-buffer](../solutions/edge-runtime/dma-double-buffer/README.md)
-- 实测结论：事件模拟与闭式 n·max + min 逐点相等；Dory 式搜索里普通 3×3 卷积在三种目标上都是计算受限，双缓冲只多 0.2%–27%；depthwise 从 HyperRAM 供数是 DMA 受限，效率 0.257，双缓冲 1.24 倍封顶；本机两线程「拷贝 + 计算」实测 0.61–1.23 倍，模型 1.00–1.88 倍，差距来自共享缓存、DRAM 与每块一次的跨线程握手
+- 实测结论：事件模拟与闭式 n·max + min 逐点相等；Dory 式搜索里普通 3×3 卷积在三种目标上都是计算受限，双缓冲只多 0.2%–27%；depthwise 从 HyperRAM 供数是 DMA 受限，效率 0.257，双缓冲 1.24 倍封顶；本机两线程「拷贝 + 计算」实测 0.61–1.23 倍，模型 1.00–1.88 倍，差距来自共享缓存、DRAM 与每块一次的跨线程握手；Xeon 8470Q 上同一实验全部慢于串行（0.63–0.95 倍），模型预测 1.0–1.94 倍
 - 状态：已验证（模型与搜索结果在 `artifacts/raw/`，`claims.json` 校验）
 
 ## 摘要
@@ -111,6 +111,22 @@ N·s_call 随 N 增长，最后一块的排空 MACs/(N·P) 随 N 减小；L1 容
 每个 tile 的计算/搬运比 = (MACs_tile / P) / (bytes_tile / BW)。对 3×3 卷积 MACs_tile ≈ th·W·tk·tc·9，bytes_tile ≈ (th + 2)·W·tc + tk·tc·9，比值约 9·tk·BW/P：PULP（P=16 MAC/cycle，BW=8 B/cycle）上 tk=16 时约 72，远大于 1。
 depthwise 没有 tc 维的复用：MACs_tile ≈ th·W·tk·9，bytes ≈ (th+2)·W·tk + tk·9，比值约 9·BW/P。片上 L2（BW=8）时约 4.5，计算受限；HyperRAM（BW≈1）时约 0.56，DMA 受限。这一行推导就是实验里 depthwise 效率从 0.77 掉到 0.257 的原因。
 
+### 换一台服务器：模型预测加速，实测全部变慢
+
+同样的两线程实验（拷贝线程 + 计算线程，64 KiB tile）在 Xeon 8470Q 上重跑，模型用服务器上测得的 c/m：
+
+```text
+每字节计算量 work     0     1     2     3     4     6     8     16    32
+模型预测            1.00  1.53  1.94  1.71  1.58  1.36  1.24  1.13  1.08
+服务器实测          0.83  0.63  0.72  0.75  0.71  0.78  0.76  0.93  0.95
+本地实测            0.66  0.81  1.00  1.13  0.96  1.23  1.10  1.07  1.04
+```
+
+服务器上没有一个点超过 1，而且曲线形状和模型不同：模型在 c/m ≈ 1 处到峰，本地实测的峰也大致在那里只是更矮，服务器实测整体平移到 1 以下、峰消失了。
+如果损失来自重叠不完全，曲线应与模型同形、只是更矮；整体平移说明第二个线程本身带来了固定成本。E15 假设拷贝与计算用互不干扰的资源，CPU 上二者都是 load/store、共享 L2/L3 与内存控制器；
+服务器还多两项干扰：两个线程可能落在 mesh 上相距较远的核，跨核交接 tile 时每条 cache line 都要经过 mesh；cgroup 只给 22 个 CPU 配额、宿主有其他租户。
+所以 E15 只在拷贝由独立硬件完成时成立：MCU 的 DMA 控制器、GPU 的 copy engine / TMA。
+
 ## 白板估算
 
 ```text
@@ -171,6 +187,8 @@ depthwise 3×3，32×32×96，int8：
    答：减少字节（int8 甚至 int4 激活；把 depthwise 和前后的 pointwise 融合，让中间激活不出 L1），或者把这一层的输入提前放进 L2（layer fusion / 跨层分块），而不是加缓冲。
 6. 问：这和数据中心的什么问题是同一个？
    答：流水线并行的气泡（mlsys-infra M13）：E16 的 Σ s_i + (n − 1)·max s_i 与 GPipe 的填充-排空同形；也和 GPU 上 cp.async 多级流水（M07 的 GEMM）是同一个思想。
+7. 问：在 CPU 上开一个线程专门拷贝，能模拟双缓冲吗？
+   答：不能指望。Xeon 8470Q 上 64 KiB tile 模型预测最高 1.94 倍，实测全部在 0.63–0.95 倍；拷贝线程和计算线程共享缓存、内存控制器和 mesh，没有独立的 DMA 引擎，第二个线程带来的是固定成本。
 
 ## 自测题
 

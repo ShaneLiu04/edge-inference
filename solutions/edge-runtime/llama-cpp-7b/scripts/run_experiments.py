@@ -27,8 +27,8 @@ LAB = Path(__file__).resolve().parents[1]
 ROOT = LAB.parents[2]
 sys.path[:0] = [str(LAB / "code"), str(ROOT)]
 
-from lcpp.parse import bench_rows, final_ppl, kld_stats, quantize_sizes, wikitext_raw  # noqa: E402
 from edge_harness.writer import provenance, write_csv, write_json  # noqa: E402
+from lcpp.parse import bench_rows, final_ppl, kld_stats, quantize_sizes, wikitext_raw  # noqa: E402
 
 RAW = LAB / "artifacts/raw"
 FIG = LAB / "artifacts/figures"
@@ -248,7 +248,6 @@ def _numbered(ax, pts: list[tuple[float, float, str]], loc: tuple[float, float])
 def plot() -> None:
     import matplotlib.pyplot as plt
     import numpy as np
-
     from edge_harness.writer import read_rows
 
     FIG.mkdir(parents=True, exist_ok=True)

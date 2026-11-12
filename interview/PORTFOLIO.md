@@ -1,10 +1,10 @@
 # 项目作品集：面试用 STAR 故事
 
 每条按「20 秒结论 → STAR → 白板 → 不能推出的结论 → 追问」组织。数字来自各实验 `artifacts/raw/`，关键数字由根目录 [`claims.json`](../claims.json) 校验。
-平台：故事 1–6 在 Ice Lake 服务器虚拟机（4 物理核 / 8 逻辑核，AVX-512 + VNNI）上，故事 7 加上 Xeon 8470Q 与 RTX 6000D，实测屋顶见 [HARDWARE-NUMBERS](HARDWARE-NUMBERS.md)。
+平台：故事 1–6 在 Ice Lake 服务器虚拟机（4 物理核 / 8 逻辑核，AVX-512 + VNNI）上，故事 7、8 加上 Xeon 8470Q 与 RTX 6000D，实测屋顶见 [HARDWARE-NUMBERS](HARDWARE-NUMBERS.md)。
 MCU、NPU、Pi 5、Orin 的数字全部是设备表参数或模型输出，每个故事里都标明。
 
-讲法：只准备两个故事。部署 / 量化岗用 1 和 3，CPU 推理引擎岗用 2 和 5，MCU / NPU 岗用 4 和 3，端侧 LLM 岗用 6 和 2。
+讲法：只准备两个故事。部署 / 量化岗用 1 和 3，CPU 推理引擎岗用 2 和 5，MCU / NPU 岗用 4 和 3，端侧 LLM 岗用 6 和 8。
 先说结果数字，90 秒停下来让对方打断。虚拟机里没有性能计数器，被问到端口压力、缓存命中时要说清是推算。
 数据中心一侧的故事（FlashAttention、分页 KV、ZeRO、GPTQ）在 mlsys-infra [PORTFOLIO](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/interview/PORTFOLIO.md)；两边可以配对讲，见文末。
 
@@ -19,6 +19,7 @@ MCU、NPU、Pi 5、Orin 的数字全部是设备表参数或模型输出，每�
 | 5 | 自写 AutoTVM 闭环，搜索比教科书分块快 2.4 倍；代价模型 Spearman 只有 0.47，不如随机 | 调度搜索、测量 | [tensor-program-tuning](../solutions/mlc/tensor-program-tuning/README.md) · [M06](../notes/module-06-schedule-search.md) |
 | 6 | Q4 × Q8 GEMV 比 fp32 快 4.6 倍，字节却少 7.1 倍：被每块指令限住，多累加器的假设被实验否定 | 端侧 LLM 解码 | [q4-gemv](../solutions/edge-runtime/q4-gemv/README.md) · [M08](../notes/module-08-block-quantized-decode.md) |
 | 7 | 同一份代码换到 Sapphire Rapids + RTX 6000D：Winograd、512 位向量、双缓冲三条结论翻转；AMX 只在 K 填满 tile 时赢 | 跨平台、性能可迁移性 | [CROSS-HOST](CROSS-HOST.md) · [报告](../reports/edge-runtime-server/edge_runtime_server_report.pdf) |
+| 8 | llama.cpp 跑完整 Qwen2.5-7B：CPU 上 Q4_0 比 Q4_K_M 快 1.48 倍，GPU 上两者只差 9%；单层预测只差一个 0.45 ms/token 的常数 | 格式选型、预测验证 | [llama-cpp-7b](../solutions/edge-runtime/llama-cpp-7b/README.md) · [M08](../notes/module-08-block-quantized-decode.md) · [报告](../reports/llama-cpp-7b/llama_cpp_7b_report.pdf) |
 
 ---
 
@@ -114,7 +115,7 @@ MCU、NPU、Pi 5、Orin 的数字全部是设备表参数或模型输出，每�
   - 层平均 SQNR：Q8_0 45.08、Q4_1 21.96、Q4_0 21.03 dB；Q4_1 SQNR 更高、困惑度更差。
   - mlsys-infra 同协议 W4 g128：RTN 33.27，GPTQ 31.20。
 - **白板**：E25 的 tok/s ≤ BW / 权重字节（Llama-7B Q4_0 3.79 GB：Pi 5 上限 4.5 tok/s、Orin Nano 17.9）；E26 的偏移项 8·Σx 每个激活块只算一次。
-- **不能推出**：没有测完整 7B 模型，7B 的 token/s 是由单层 GEMV 推算的；Pi 5 和 Orin 的数是设备表上界；Q4_1 和 Q4_0 困惑度差 0.27 没有置信区间。
+- **不能推出**：这个实验本身没有测完整 7B 模型，7B 的 token/s 是由单层 GEMV 推算的（完整模型见故事 8：端到端只比预测多一个 0.41–0.47 ms/token 的常数）；Pi 5 和 Orin 的数是设备表上界；Q4_1 和 Q4_0 困惑度差 0.27 没有置信区间。
 - **追问**：4 线程 Q8 更快，那该选 Q8？矩阵能部分留在缓存时才成立；7B 的 GB 级权重每个 token 都从 DRAM 流过，按 48.4 GB/s 封顶算，Q8 约 148 ms/token，Q4 约 125 ms，结论很可能反转。
   服务器上 llama.cpp 跑完整 Qwen2.5-7B 证实了反转：16 线程 Q4_0 37.4、Q8_0 22.0 tok/s。
 
@@ -134,6 +135,22 @@ MCU、NPU、Pi 5、Orin 的数字全部是设备表参数或模型输出，每�
 - **不能推出**：两台机器的编译器不同，跨主机比值混合了硬件与编译器；服务器 cgroup 只给 22 个 CPU 配额且有其他租户；都没有性能计数器。
 - **追问**：AMX 峰值 4.3 TOP/s，你只到 40%，差在哪？2×2 输出块里每个 tile 只复用 2 次，tile load 没被藏住；更大的块受限于 8 个 tile 寄存器。没有计数器，这是推算。
 
+## 8. 真实 7B：CPU 和 GPU 选的格式相反
+
+**20 秒**：用 llama.cpp 在 Xeon 8470Q 和 RTX 6000D 上跑完整的 Qwen2.5-7B，量化成 11 种 GGUF，测解码、prefill、困惑度、对 F16 的 KL 散度和 batch 吞吐。两边解码都贴着带宽线（GPU 上 F16 93%），但 CPU 上 K-quant 是指令受限的：Q2_K 读的字节只有 Q4_0 的 68%，解码反而慢 19%。同约 4.5 bpw，Q4_K_M 的 KL 散度只有 Q4_0 的 0.55 倍。q4-gemv 只算 Linear 的预测，三种格式都差同一个常数 0.41–0.47 ms/token。
+
+- **S**：故事 6 的 7B token/s 是从单层 GEMV 推出来的，面试官会问「真模型上还对吗」。
+- **T**：在真实引擎上检验预测，并补上单层实验测不到的质量代价和 batch 行为。
+- **A**：HF → f16 GGUF → 9 种格式加两个 imatrix 版本；`llama-bench` 1–16 线程、`--repack 0/1`；GPU 全部层 offload；`llama-perplexity` 测 PPL 和 KLD（wikitext-2，ctx 512）；`llama-batched-bench` 并发 1–128。被限流的点（标准差与均值同量级）丢掉重跑。
+- **R**：
+  - CPU 16 线程：Q4_0 37.4、Q8_0 22.0、F16 13.4 tok/s，乘以每 token 字节是 154 / 165 / 189 GB/s，DRAM 读 193.5。Q4_K_M 只到 56%，GPU 上 75%。
+  - AMX 权重重排：prefill 93.5 → 261.1 tok/s（2.8 倍），解码 26.5 → 37.0（1.4 倍），与 int8-kernels 里 AMX 对 VNNI 的 3.0 倍同量级。
+  - 质量：KL 每少 1 bit 约涨 3 倍；PPL 在 5 bit 以上几乎不动（7.102 → 7.154），同 top-1 已从 97.7% 掉到 95.1%。imatrix 在 Q2_K 上把 KLD 降 39%。
+  - batch：1 路时 Q4_0 是 F16 的 2.8 倍，128 路时只剩 1.14 倍。
+- **白板**：tok/s × 每 token 权重字节 = 有效带宽（E25）；端到端时间 = Σ 层时间 + 常数 c，三种格式的 c 都在 0.41–0.47 ms。
+- **不能推出**：CPU 跑在 cgroup 限 22 核的多租户容器里；「K-quant 指令受限」是由字节与速度的反常推出的，没有 perf 计数器；0.45 ms 没用 nsys 拆到算子；ctx 512 的 PPL 不能和 mlsys-infra 的 HF ctx 1024 直接比。
+- **追问**：手机上该选哪个？看每字节有多少 ALU。Cortex-A76 这类核比 Xeon 更弱，指令受限更严重，Q4_0 的优势会更大；质量要求高时用 Q4_K_M + imatrix，接受只用到一半带宽。
+
 ---
 
 ## 和 mlsys-infra 配对讲
@@ -144,3 +161,4 @@ MCU、NPU、Pi 5、Orin 的数字全部是设备表参数或模型输出，每�
 | 3 整数逐位对齐 | 4 分片 AdamW 逐位相等 | 用逐位相等而不是 allclose 做验收 |
 | 5 调度搜索 | 5 `torch.compile` 的字节比 | 编译器的收益由 roofline 决定；有噪声和无噪声的搜索 |
 | 6 Q4 解码 | 2 推测解码、3 分页 KV | decode 受带宽限：端侧减字节，数据中心加 batch 或摊薄验证 |
+| 8 真实 7B 的格式选型 | 6 GPTQ / AWQ 在 Qwen2.5-7B 上 | 同一个模型、同一张卡：imatrix 与 AWQ / GPTQ 都按激活给误差加权；并发 128 时量化只剩省显存的价值 |

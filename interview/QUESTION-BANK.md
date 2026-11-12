@@ -1,4 +1,4 @@
-# 题库：42 道概念题
+# 题库：45 道概念题
 
 按 9 个模块分组，每题先说结论，再给本仓库的测量，最后是一个常见错答。公式编号见 [FORMULAS](FORMULAS.md)，数字由 [`claims.json`](../claims.json) 校验。
 数据中心一侧（serving、分布式、GPU kernel）的题在 mlsys-infra [QUESTION-BANK](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/interview/QUESTION-BANK.md)。
@@ -141,9 +141,9 @@ depthwise 每个输出通道只依赖同一输入通道，按通道顺序算完�
 GPT-2 上 Q4_1 层平均 21.96 dB、Q4_0 21.03 dB，困惑度 32.15 对 31.88。Q4_0 让每块最大幅值元素精确落在网格上；均值 SQNR 低估了少数大权重的贡献。这是假设，没做「只保护最大元素」的消融，成对差 0.27 也没有置信区间。
 常见错答：用 SQNR 代替困惑度验收。
 
-## M09 换一台机器：服务器 CPU 与 GPU 复现
+## M09 换一台机器：服务器 CPU 与 GPU 复现，以及真实 7B
 
-数字来自 Xeon 8470Q（Sapphire Rapids）与 RTX 6000D，见 [CROSS-HOST](CROSS-HOST.md) 与 [`reports/edge-runtime-server`](../reports/edge-runtime-server/edge_runtime_server_report.pdf)。
+数字来自 Xeon 8470Q（Sapphire Rapids）与 RTX 6000D，见 [CROSS-HOST](CROSS-HOST.md) 与 [`reports/edge-runtime-server`](../reports/edge-runtime-server/edge_runtime_server_report.pdf)；Q42–Q45 来自 [llama-cpp-7b](../solutions/edge-runtime/llama-cpp-7b/README.md)。
 
 **Q33. 服务器有 307 GB/s 的内存带宽，单线程解码为什么还是慢？**
 那是一个插槽 8 个通道并发的总量。单核受 Little 定律（E2）限制，实测 17.5 GB/s，只比 4 核虚拟机高 30%；16 线程才到 193.5。
@@ -194,3 +194,17 @@ CPU 是指令受限：每块的拆半字节、减 8 与点积争用同一组向�
 16 线程 Qwen2.5-7B：prefill 2.8 倍（Q4_0 93.5 → 261 tok/s，Q8_0 94.6 → 256），解码 1.3–1.4 倍（Q4_0 26.5 → 37.0，Q8_0 17.0 → 22.0）。
 prefill 是大 M 的 GEMM，AMX 的 tile 吃满；解码是 M = 1，tile 浪费 15/16 的行，收益来自重排后的连续布局把解包指令变少——重排后每 token 读 152–165 GB/s，接近 16 线程 DRAM 读的 193.5，回到带宽受限。
 常见错答：「AMX 在 GEMM 上快 3 倍（int8-kernels 512³ 实测），所以解码也快 3 倍」。解码受带宽限，算力再多也只能把指令开销压到带宽以下。
+
+**Q43. Q2_K 的字节比 Q4_0 少三成，为什么在 CPU 上解码反而更慢？**
+CPU 上 K-quant 是指令受限：每 256 个权重有两级 scale（超块 fp16 + 子块 6 bit），解包要多做移位、取子块 scale、乘子块 scale。Qwen2.5-7B 16 线程：Q2_K 2.80 GB、30.3 tok/s，Q4_0 4.12 GB、37.4 tok/s；Q4_K_M 只到 DRAM 读的 56%，Q4_0 79%。
+GPU 上排序正常：Q2_K 305 tok/s 最快，Q4_K_M 仍在带宽线的 75%，因为每字节的 ALU 多，解包被访存延迟藏住。这是由字节与速度的反常推出的，没有计数器证据。
+常见错答：字节少就快。只在带宽受限时成立，先确认格式的解包没有把内核推到指令受限。
+
+**Q44. Q8_0 到 Q5_K_M 困惑度只涨 0.7%，能说明 5 bit 无损吗？**
+不能。同一区间同 top-1 比例从 97.7% 掉到 95.1%，即每 20 个 token 就有一个与 F16 选得不同；平均 KLD 从 0.0015 涨到 0.0094（6 倍），KLD p99 更早报警。困惑度是对数似然的平均，对少数 token 的分布改写不敏感。
+验收量化格式用对 F16 logits 的 KL 散度和同 top-1，困惑度只做最后的检查。
+常见错答：PPL 差 1% 以内就当无损。
+
+**Q45. 7B 模型在服务端还值得用 Q4 吗？**
+看并发。llama.cpp 在 RTX 6000D 上 1 路时 Q4_0 是 F16 的 2.8 倍，128 路时只剩 1.14 倍：权重读一遍被 128 条序列分摊，瓶颈变成算力和 KV cache 读取。高并发下量化的价值是省显存（放更多 KV、更大 batch），要让每步更快需要 W8A8 / FP8 这类让 GEMM 本身变快的格式。
+常见错答：Q4 在任何负载下都按字节比加速。

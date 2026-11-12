@@ -3,7 +3,7 @@
 - 课程出处：MIT 6.5940 Fall 2024《Quantization I》 · gemmlowp / TFLite `quantization_util` · ONNX `QLinearConv` 规范 · CMSIS-NN `arm_nn_requantize`
 - 必读论文：Jacob et al., Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference, 2018；Krishnamoorthi, Quantizing deep convolutional networks for efficient inference, 2018
 - 对应实验：[int8-kernels](../solutions/edge-runtime/int8-kernels/README.md)
-- 实测结论：同一组 int32 累加，TFLite 式两步定点 requant 与 ONNX Runtime 在 99.93–99.97% 的输出上一致，其余差 1 个量化级，不一致率按 2^-(shift+1) 随 shift 变化；单次舍入与 ORT 100% 一致；AVX2 `vpmaddubsw` 在 |w| ≤ 64 时零错误，|w| = 127 时 4096 列全部饱和；VNNI 打包 GEMM 比逐点积快 2.0–30.8 倍，requant 融合进寄存器比单独标量 epilogue 快 1.2–3.5 倍；ONNX Runtime int8 在 1 线程比 fp32 快 1.39–3.08 倍
+- 实测结论：同一组 int32 累加，TFLite 式两步定点 requant 与 ONNX Runtime 在 99.93–99.97% 的输出上一致，其余差 1 个量化级，不一致率按 2^-(shift+1) 随 shift 变化；单次舍入与 ORT 100% 一致；AVX2 `vpmaddubsw` 在 |w| ≤ 64 时零错误，|w| = 127 时 4096 列全部饱和；VNNI 打包 GEMM 比逐点积快 2.0–30.8 倍，requant 融合进寄存器比单独标量 epilogue 快 1.2–3.5 倍；ONNX Runtime int8 在 1 线程比 fp32 快 1.39–3.08 倍。Xeon 8470Q 上 AMX tile GEMM 512³ 1704 GOP/s（VNNI 打包的 3.0 倍），K = 24 时只有 0.6 倍
 - 状态：已验证（`artifacts/raw/summary.json`、`requant_agreement.csv`、`double_rounding.csv`、`maddubs_saturation.csv`，`claims.json` 校验）
 
 ## 摘要
@@ -149,6 +149,23 @@ shift = 1 ：预测 0.25，   实测 0.2498–0.2506
 
 工程解法有三个：权重限制在 7 bit（[-64, 64]），x 用 7 bit，或者换 VNNI。oneDNN 在没有 VNNI 的 AVX2 机器上把权重缩放 0.5 并在 requant 里补偿。
 
+### 换一台服务器：AMX 的有效比例与 epilogue 的份额
+
+int8-kernels 在 Xeon 8470Q（Sapphire Rapids）上重跑，并新增一条 AMX tile 路径（`arch_prctl` 申请 XTILEDATA，2×2 输出块）。AMX 一个 tile 在 K 方向固定吃 64 字节：
+
+```text
+有效比例 η(K) = K / (64 · ⌈K/64⌉)
+K = 24（MBv2 1×1 expand）：η = 0.375，AMX 162 GOP/s 对 VNNI 打包 270，0.6 倍
+512³：                     η = 1，    AMX 1704 对 563，3.0 倍
+prefill 256×4096×4096：    AMX 1659 对 280，5.9 倍（VNNI 内核把 16 MiB 的 B 扫 64 遍，AMX 8 遍）
+```
+
+契约本身不变：AMX 仍是 u8 × s8 → int32，requant 语义与 ORT 的逐位对齐结论照旧成立。变的是 epilogue 的份额：GEMM 快了 3 倍、requant 的时间不变，
+单独一遍 SIMD requant 的损失从 VNNI 时的 12% 变成 AMX 时的 43%（1704 → 969 GOP/s）。这是 Amdahl：GEMM 越快，epilogue 越必须融合进寄存器阶段。
+
+编译器也会改变结论。同一段标量 int8 循环，本地 GCC 13.2 自动向量化成 `vpdpbusd`（100 GOP/s），服务器 GCC 11.4 只能先把字节扩成 16 位（20 GOP/s）；
+汇编计数 78 对 60 条 `vpdpbusd`、14 对 80 条字节扩展。手写 intrinsics 的版本两边都稳定，所以报告加速比时要写编译器版本。
+
 ## 白板估算
 
 用 [硬件参数速查](../interview/HARDWARE-NUMBERS.md) 的本机数字：1 线程 fp32 FMA 峰值 155 GFLOP/s，int8 VNNI 峰值 396 GOP/s，只有 fp32 的 2.56 倍，低于「每 lane 4 个乘加」推出的 4 倍：`vpdpbusd` 的吞吐低于 FMA，int8 峰值要实测，不能按位宽换算。
@@ -215,6 +232,8 @@ ONNX Runtime 1 线程：int8 比 fp32 快 1.39–3.08 倍（conv3x3 3.08 倍、p
    答：AVX2 用 `vpmaddubsw` + `vpmaddwd`，中间有饱和 int16，要求 |w| ≤ 64（E6）；VNNI 的 `vpdpbusd` 直接到 int32。性能上更大的差别在布局：打包成 [N/16][K/4][16][4] 后没有水平求和，K 小时快 30 倍。
 6. 问：requant 放在哪里做？
    答：融合进 GEMM 的寄存器 epilogue，int32 tile 不写回内存。本机 pw_expand_56 上，单独的标量 epilogue 把 129 GOP/s 拖到 20，融合后 66；K 小的层 epilogue 占比最大。
+7. 问：有了 AMX，是不是所有 int8 层都走 AMX？
+   答：不是，按 K 选路径。tile 的 K 固定 64 字节，K = 24 时有效比例 0.375，Xeon 8470Q 上 AMX 162 对 VNNI 270 GOP/s；512³ 上 3.0 倍。GEMM 变快后单独 requant 的损失从 12% 涨到 43%，融合更要紧。
 
 ## 自测题
 

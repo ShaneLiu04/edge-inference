@@ -30,7 +30,12 @@
 | 05 | 卷积实现 | im2col、implicit GEMM、depthwise、Winograd 各在哪个区间赢 | ncnn / CMSIS-NN 的内核分工；Lavin & Gray 2016 | [conv-kernels](solutions/edge-runtime/conv-kernels/README.md) |
 | 06 | 调度搜索 | 调度空间多大、什么样的调度快、代价模型和测量噪声能信多少 | MLC 自动程序优化；AutoTVM；Ansor | [tensor-program-tuning](solutions/mlc/tensor-program-tuning/README.md) |
 | 07 | DMA 与双缓冲 | 什么时候重叠省时间，什么时候省不了，分块怎么选 | Dory、Deeploy、TinyEngine | [dma-double-buffer](solutions/edge-runtime/dma-double-buffer/README.md) |
-| 08 | 块量化解码 | Q4_0 的字节、解码上界、内核能拿到多少、困惑度掉多少 | llama.cpp / ggml；GPTQ、AWQ 的对照在 mlsys-infra | [q4-gemv](solutions/edge-runtime/q4-gemv/README.md) |
+| 08 | 块量化解码 | Q4_0 的字节、解码上界、内核能拿到多少、困惑度掉多少 | llama.cpp / ggml；GPTQ、AWQ 的对照在 mlsys-infra | [q4-gemv](solutions/edge-runtime/q4-gemv/README.md)、[llama-cpp-7b](solutions/edge-runtime/llama-cpp-7b/README.md) |
+
+模块 08 有两个实验。q4-gemv 自己实现块格式和 GEMV，用「层时间之和」预测整模型解码；llama-cpp-7b 用 llama.cpp 跑完整的 Qwen2.5-7B，检验这个预测，并补上单层实验测不到的东西：11 种 GGUF 的质量代价、K-quant 在 CPU 与 GPU 上相反的速度排序、batch > 1 的吞吐。
+
+模块 01、02、05、06、07、08 的实验还在 Xeon 8470Q + RTX 6000D 上重跑过一遍，用来区分「结构性」结论（只由访存 / 计算比决定）和「位置性」结论（取决于两个量谁大，换机器会翻转），见 [CROSS-HOST.md](interview/CROSS-HOST.md) 和[服务器复测报告](reports/edge-runtime-server/edge_runtime_server_report.pdf)。
+
 ## 和相邻仓库的边界
 
 | 内容 | 放在哪 | 理由 |
@@ -48,8 +53,9 @@
 3. 一个实验：`README.md`、`tests/`、`scripts/run_experiments.py`、`artifacts/raw/`、`artifacts/figures/`；README 写明和原课程的差异与「不能推出什么」。
 4. 笔记和 README 里引用的关键数字进 [`claims.json`](claims.json)，由 `scripts/check_claims.py` 对原始结果校验。
 5. 至少一道带常见错答的题进 [interview/QUESTION-BANK.md](interview/QUESTION-BANK.md)，一句话答案进 [COURSE-QA](interview/COURSE-QA.md)。
+6. 一份 LaTeX 报告，放在 `reports/<lab>/`，带参考文献（`scripts/check_reports.py` 校验）。
 
-八个模块五件都已交付，状态见 [PROGRESS.md](PROGRESS.md)。
+八个模块六件都已交付，第 9 个实验 llama-cpp-7b 也有 README、测试、claims 和报告，状态见 [PROGRESS.md](PROGRESS.md)。
 
 ## 岗位怎么读
 
@@ -59,4 +65,4 @@
 | MCU / CMSIS-NN | 01、02、04、07 | int32 累加与 requant 逐位对齐；激活峰值下界与 patch 推理 |
 | NPU 编译 / mapping | 04、06、07 | 寄存器分块、代价模型 Spearman 0.47–0.53；depthwise 在片外存储上 DMA 受限 |
 | CPU 推理引擎（ncnn、MNN、XNNPACK） | 02、05、06 | int8 GEMM 的打包与融合 requant（30.8 倍、3.3 倍）；depthwise NHWC 8–9 倍 |
-| 端侧 LLM | 08，外加 mlsys-infra 的 M15 和 M17 | tok/s ≤ 带宽 / 权重字节；Q4 内核只拿到字节比的 65% |
+| 端侧 LLM | 08，外加 mlsys-infra 的 M15 和 M17 | tok/s ≤ 带宽 / 权重字节；Q4 内核只拿到字节比的 65%；llama.cpp 跑 7B 时 CPU 上 K-quant 只到带宽线的 44–56%，GPU 上仍有 75% |

@@ -3,7 +3,7 @@
 - 课程出处：MIT 6.5940 Fall 2024《Efficient Inference》与《TinyEngine》 · CMU 15-418 / Stanford CS149《Parallel Computing》 · Williams et al.《Roofline》 · Hennessy & Patterson 第 4–5 章
 - 必读论文：Williams, Waterman & Patterson, Roofline: An Insightful Visual Performance Model for Multicore Architectures, CACM 2009；McCalpin, STREAM benchmark, 1995；Ofenbeck et al., Applying the Roofline Model, ISPASS 2014
 - 对应实验：[host-roofline](../solutions/edge-runtime/host-roofline/README.md)
-- 实测结论：本机（4 核 Ice Lake 服务器虚拟机，AVX-512 + VNNI）1 线程 fp32 FMA 峰值 154.9 GFLOP/s、int8 VNNI 396.1 GOP/s（只有 fp32 的 2.56 倍，不是 4 倍），DRAM 只读 13.4 GB/s，fp32 拐点 11.5 FLOP/B；4 线程 596.6 GFLOP/s、1493 GOP/s、DRAM 48.4 GB/s，单核只能用到 4 核 DRAM 带宽的 28%；L1 到 DRAM 的带宽差 12 倍；本仓库 GEMM 类卷积 kernel 只到屋顶的 16–26%（Winograd 等效 48%），带宽受限的 depthwise NHWC 到 36–87%
+- 实测结论：本机（4 核 Ice Lake 服务器虚拟机，AVX-512 + VNNI）1 线程 fp32 FMA 峰值 154.9 GFLOP/s、int8 VNNI 396.1 GOP/s（只有 fp32 的 2.56 倍，不是 4 倍），DRAM 只读 13.4 GB/s，fp32 拐点 11.5 FLOP/B；4 线程 596.6 GFLOP/s、1493 GOP/s、DRAM 48.4 GB/s，单核只能用到 4 核 DRAM 带宽的 28%；L1 到 DRAM 的带宽差 12 倍；本仓库 GEMM 类卷积 kernel 只到屋顶的 16–26%（Winograd 等效 48%），带宽受限的 depthwise NHWC 到 36–87%。Xeon 8470Q 复测：1 线程 DRAM 17.5 GB/s（只高 30%），16 线程 193.5 GB/s、fp32 3167 GFLOP/s，拐点随线程数从 13.3 升到 16.4 FLOP/B
 - 状态：已验证（`artifacts/raw/roofline.jsonl`、`summary.json`、`lab_points.csv`，`claims.json` 校验）
 
 ## 摘要
@@ -138,6 +138,24 @@ triad `a = b + s·c` 按 3 个流计字节（读 b、c，写 a），1 线程大�
 - 峰值核用 16 条独立累加链：FMA 延迟 4 周期 × 2 端口 = 至少 8 条链才能填满流水线。
 - DRAM、L1、triad 取扫描两端各 3 个点的中位数：平台检测（相邻点下降超过 35% 才分级）会把 L2→L3 的缓坡并进一级，不适合直接取值。
 
+### 换一台服务器：单核带宽几乎不动
+
+同一份微基准在 AutoDL 的 Xeon Platinum 8470Q（Sapphire Rapids，绑 NUMA1 的 16 个物理核）上重跑（`artifacts/raw/xeon8470q/`）：
+
+```text
+                    本地 VM（Ice Lake）   Xeon 8470Q    比值
+DRAM 读，1 线程      13.4 GB/s            17.5 GB/s     1.30
+DRAM 读，4 线程      48.4                 66.6          1.37
+DRAM 读，16 线程     —                    193.5         —
+fp32 峰值，1 线程    155 GFLOP/s          232           1.50
+int8 VNNI，1 线程    396 GOP/s            617           1.56
+fp32 拐点，1 线程    11.5 FLOP/B          13.3          1.15
+```
+
+单核带宽只高 30%，频率却高 50%：单核带宽由 Little 定律限住（在途缺失数 × 64 B ÷ 延迟），每核的 line fill buffer 两代之间几乎没变，而 Sapphire Rapids 的 mesh 更大、延迟更长。
+16 线程 193.5 GB/s 是单插槽理论值（8 × DDR5-4800 = 307 GB/s）的 63%。计算峰值随线程数近乎线性（fp32 1 → 16 线程 13.7 倍），带宽只有 11 倍，所以拐点随线程数从 13.3 升到 16.4 FLOP/B：多核让更多的层变成带宽受限。
+llama.cpp 单线程解码 Qwen2.5-7B Q4_0 读到 16.3 GB/s，是单核带宽的 93%，单线程解码测的就是这条斜线。完整对照见 [CROSS-HOST](../interview/CROSS-HOST.md)。
+
 ## 白板估算
 
 ```text
@@ -203,6 +221,8 @@ int8 VNNI 打包 GEMM，square_512：I 远大于 29.5，屋顶 396 → 实测 21
    答：GEMV 强度 ≈ 2 / 每参数字节，Q4_0 约 3.6 op/B，远在拐点左边，时间 ≈ 权重字节 / 持续带宽。0.5 B 参数 Q4_0 在本机单线程 21 ms/token，4 线程 5.8 ms；实测见 M08。
 6. 问：屋顶下面的点离屋顶很远，怎么办？
    答：看它在拐点哪侧：左边先减字节（融合、量化、换布局），右边先喂满 SIMD（寄存器分块、打包、去掉水平求和）。本机 1×1 卷积 30 GFLOP/s 离 137 的屋顶很远，缺的是寄存器分块，这是 M06 调度搜索要解决的。
+7. 问：换到服务器 CPU，单线程解码会快多少？
+   答：只按单核带宽涨。Xeon 8470Q 单线程 DRAM 读 17.5 GB/s，只比本机高 30%，虽然全插槽有 307 GB/s；要用满带宽得 16 线程（193.5 GB/s）。
 
 ## 自测题
 

@@ -10,7 +10,7 @@
 \maketitle
 
 \begin{abstract}
-q4-gemv lab 在单层 GEMV 上拆开了块量化的开销，并用“196 个 Linear 的时间之和”预测整模型解码。本报告用 llama.cpp 跑完整的 Qwen2.5-7B，
+q4-gemv lab 在单层 GEMV 上拆开了块量化的开销，并用“196 个 Linear 的时间之和”预测整模型解码。本报告用 llama.cpp~\cite{llamacpp} 跑完整的 Qwen2.5-7B~\cite{qwen25}，
 在一台 Xeon 8470Q（16 个物理核，实测 DRAM 读 193.5 GB/s）和一张 RTX 6000D（实测读 1333 GB/s）上测 11 种 GGUF 格式的解码、prefill、
 困惑度、对 F16 的 KL 散度和 batch 吞吐，并检验 q4-gemv 的预测。
 
@@ -38,7 +38,7 @@ CPU & 2 × Xeon Platinum 8470Q，绑 NUMA1 的 16 个物理核；1 / 16 线程 D
 GPU & RTX 6000D，84 GB，4 GB 顺序读 1333 GB/s（q4-gemv） \\
 引擎 & llama.cpp \texttt{149f564}；CPU 版 \texttt{GGML\_NATIVE=ON}（AVX-512、VNNI、AMX），CUDA 版 sm\_120 \\
 速度 & \texttt{llama-bench}：CPU tg32 / pp64，GPU tg128 / pp512（FA 开 / 关取较好者），重复 3--5 次 \\
-质量 & wikitext-2 raw test，\texttt{llama-perplexity} ctx 512；KL 用前 80 个 chunk 对 F16 logits \\
+质量 & wikitext-2~\cite{wikitext} raw test，\texttt{llama-perplexity} ctx 512；KL 用前 80 个 chunk 对 F16 logits \\
 batch & \texttt{llama-batched-bench}，prompt 512 + 生成 128，并发 1--128 \\
 \bottomrule
 \end{tabular}
@@ -57,7 +57,7 @@ batch & \texttt{llama-batched-bench}，prompt 512 + 生成 128，并发 1--128 \
 
 Q4\_0 单线程 3.97 tok/s，乘以每 token 4.1 GB 是 16.3 GB/s，单核 DRAM 读的 93\%；16 线程 37.4 tok/s（154 GB/s）。
 F16 在 16 线程 13.4 tok/s，189 GB/s，几乎是 DRAM 读的全部。单线程解码测的就是单核的带宽：单核能挂起的 cache miss 有限，
-带宽 = 在途字节 / 延迟（Little 定律），而不是总线宽度。
+带宽 = 在途字节 / 延迟（Little 定律），而不是总线宽度。这正是 roofline 模型~\cite{roofline} 里带宽那条斜线在单核上的含义。
 
 \begin{table}[H]
 \centering\small
@@ -169,7 +169,7 @@ Q2\_K + imatrix & 3.16 & 8.4893 & 0.2378 & 1.810 & 77.3\% \\
   \item KL 散度每少 1 bit 约涨 3 倍。困惑度很迟钝：Q8\_0 到 Q5\_K\_M 只从 7.105 涨到 7.154（+0.7\%），同 top-1 已从 97.7\% 掉到 95.1\%，
   即每 20 个 token 就有一个与 F16 选得不同。KLD 的 p99 比平均值更早报警。
   \item 同约 4.5 bpw，Q4\_K\_M 的 KLD 是 Q4\_0 的 0.55 倍；Q4\_1 更大却更差。K-quant 每 16--32 个权重有自己的步长，\texttt{\_M} 还对重要张量混用 Q6\_K。
-  \item imatrix 是校准集上每个输入通道激活平方的均值，量化时按它给误差加权——和 AWQ、GPTQ 同一个思想：误差要按激活加权。
+  \item imatrix 是校准集上每个输入通道激活平方的均值，量化时按它给误差加权——和 AWQ~\cite{awq}、GPTQ~\cite{gptq} 同一个思想：误差要按激活加权。
   它在 Q4\_K\_M 上降 KLD 27\%，在 Q2\_K 上降 39\%、把 PPL 从 9.78 拉回 8.49；只改变选哪个量化值，不改变存储，速度相同。
 \end{itemize}
 
@@ -256,5 +256,14 @@ python scripts/run_experiments.py summarize       # tables and figures from arti
 
 路径由环境变量给出（\texttt{LLAMA\_CPP}、\texttt{HF\_MODEL}、\texttt{GGUF\_WORK}、\texttt{GGUF\_QDIR}、\texttt{CPU\_CORES} 等）；
 原始数据在 \nolinkurl{solutions/edge-runtime/llama-cpp-7b/artifacts/raw/}。
+
+\begin{thebibliography}{99}
+\bibitem{llamacpp} G. Gerganov et al. llama.cpp: LLM inference in C/C++. \url{https://github.com/ggml-org/llama.cpp}, commit \texttt{149f564}, 2026.
+\bibitem{qwen25} Qwen Team. Qwen2.5 Technical Report. arXiv:2412.15115, 2024.
+\bibitem{wikitext} S. Merity, C. Xiong, J. Bradbury, R. Socher. Pointer Sentinel Mixture Models. In \emph{ICLR}, 2017.
+\bibitem{roofline} S. Williams, A. Waterman, D. Patterson. Roofline: An Insightful Visual Performance Model for Multicore Architectures. \emph{Communications of the ACM}, 52(4), 2009.
+\bibitem{gptq} E. Frantar, S. Ashkboos, T. Hoefler, D. Alistarh. GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers. In \emph{ICLR}, 2023.
+\bibitem{awq} J. Lin, J. Tang, H. Tang, S. Yang, W.-M. Chen, W.-C. Wang, G. Xiao, X. Dang, C. Gan, S. Han. AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration. In \emph{MLSys}, 2024.
+\end{thebibliography}
 
 \end{document}

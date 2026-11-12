@@ -3,7 +3,7 @@
 - 课程出处：MIT 6.5940 Fall 2024《TinyEngine and Parallel Processing》 · CMU 15-418《Parallel Computing》 · Lavin & Gray《Fast Algorithms for Convolutional Neural Networks》 · NNPACK / XNNPACK 源码
 - 必读论文：Lavin & Gray, Fast Algorithms for Convolutional Neural Networks, 2016；Chellapilla et al., High Performance Convolutional Neural Networks for Document Processing, 2006（im2col）；Zhang et al., High Performance Zero-Memory Overhead Direct Convolutions, 2018
 - 对应实验：[conv-kernels](../solutions/edge-runtime/conv-kernels/README.md)
-- 实测结论：本机单线程 fp32，9 个 MobileNetV2/ResNet 层上 im2col 与 implicit GEMM 在 15.8–36.6 GFLOP/s，implicit GEMM 不要工作区（im2col 在 ResNet 56×56 上要 7.2 MB）；depthwise 改 NHWC + SIMD 比按通道的 CHW 实现快 8.2–9.0 倍；Winograd F(2,3) 在 14×14×256 上等效 75.0 GFLOP/s（implicit GEMM 的 2.15 倍，理论 2.25 倍），在 56×56×64 上只有 1.16 倍；F(4,3) 的 fp16 误差是直接卷积的 7.2 倍，换成 0..4 的插值点直接溢出
+- 实测结论：本机单线程 fp32，9 个 MobileNetV2/ResNet 层上 im2col 与 implicit GEMM 在 15.8–36.6 GFLOP/s，implicit GEMM 不要工作区（im2col 在 ResNet 56×56 上要 7.2 MB）；depthwise 改 NHWC + SIMD 比按通道的 CHW 实现快 8.2–9.0 倍；Winograd F(2,3) 在 14×14×256 上等效 75.0 GFLOP/s（implicit GEMM 的 2.15 倍，理论 2.25 倍），在 56×56×64 上只有 1.16 倍；F(4,3) 的 fp16 误差是直接卷积的 7.2 倍，换成 0..4 的插值点直接溢出。Xeon 8470Q 复测：56² 层 Winograd 反而比 implicit GEMM 慢 32%，14² 层快 3.0 倍；depthwise NHWC 仍快 8.2 倍
 - 状态：已验证（`artifacts/raw/summary.json`、`conv_bench.csv`、`winograd_numerics.csv`，`claims.json` 校验）
 
 ## 摘要
@@ -140,6 +140,21 @@ F(6,3) 点 0..±3      2.0e-4              2.06（不可用）
 
 int8 输入 |d| ≤ 127，F(2,3) 变换后 ≤ 4·127 = 508，需要 10 bit（有符号）；F(4,3) ≤ 12,700，需要 15 bit。变换后的输入不能再用 int8 逐点乘，要么用 int16 乘法（吞吐减半，抵消一半乘法节省），要么在变换域重新量化（引入额外误差）。这是 TFLite Micro、CMSIS-NN 不提供 int8 Winograd 的原因。
 
+### 换一台服务器：Winograd 的收益是位置性的
+
+同一份代码在 Xeon 8470Q 上单线程重跑（GCC 11.4，`artifacts/raw/xeon8470q/`），单位 GFLOP/s：
+
+```text
+层                implicit GEMM 本地 → 服务器   Winograd F(2,3) 本地 → 服务器   Winograd / implicit
+ResNet 3×3 56²    34.3 → 80.4                  39.7 → 54.3                     1.16 → 0.68
+ResNet 3×3 14²    34.9 → 48.2                  75.0 → 144.5                    2.15 → 3.00
+depthwise 56²     NHWC SIMD 10.8 → 17.0，CHW 通用 1.20 → 2.07                   9.0 → 8.2 倍
+```
+
+把 Winograd 的时间拆成乘法和变换两部分：t_w = t_g / 2.25 + t_x，收益 = t_g / t_w。服务器上 implicit GEMM 快了 2.3 倍，逐 tile 加减与散布写的变换只快 1.4 倍，
+t_x 的相对份额变大，56² 层从快 16% 变成慢 32%；14² 层 K = C × 9 较小、GEMM 本身效率低，少做 2.25 倍乘法的优势仍在。
+depthwise 的布局结论是结构性的，只由访存方式决定，换机器只改常数。框架在运行时按设备测量选算法（cuDNN 的 benchmark 模式、ncnn 的按层选择），原因就在这里。
+
 ## 白板估算
 
 本机单线程 fp32 FMA 峰值 155 GFLOP/s、DRAM 读 13.4 GB/s（M01）：
@@ -204,6 +219,8 @@ im2col 与 implicit GEMM：15.8–36.6 GFLOP/s，峰值的 10–24%；教学用�
    答：F(2,3) 的变换后输入要 10 bit，F(4,3) 要 15 bit，逐点乘必须 int16，吞吐减半，节省被抵消一半；还要处理变换后的重新量化。所以端侧 int8 runtime 一般不用。
 6. 问：depthwise 为什么慢，怎么救？
    答：E21：fp32 3×3 强度 4.5 FLOP/byte（每个输入读一次的理想情况），实际滑窗还会重复读；GEMM 化没有 K 维可分块。救法是 NHWC 布局让通道维向量化（本机 8.2–9.0 倍），以及与相邻 1×1 融合，让 depthwise 的输入不落回内存。
+7. 问：Winograd 在你的开发机上快，部署机上慢，哪个对？
+   答：都对，它是位置性结论。收益 = t_g / (t_g / 2.25 + t_x)，GEMM 变快、变换不变时收益缩小：Xeon 8470Q 上 implicit GEMM 快了 2.3 倍，56² 层 Winograd 从 1.16 倍变成 0.68 倍，14² 层仍是 3.0 倍。按目标设备逐层测量再选。
 
 ## 自测题
 

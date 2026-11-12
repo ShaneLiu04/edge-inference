@@ -77,8 +77,8 @@ def main() -> None:
             w.writerow({k: (f"{v:.6g}" if isinstance(v, float) else v) for k, v in r.items()})
     sens = Counter(r.get("most_sensitive_w4_layer") for r in runs)
     meta = dict(seeds=[r["seed"] for r in runs], most_sensitive_w4_layer=dict(sens),
-                train=[json.loads(l) for p in sorted(OUT.glob("train_log_s*.jsonl"))
-                       for l in p.read_text(encoding="utf-8").splitlines() if '"final"' in l])
+                train=[json.loads(line) for p in sorted(OUT.glob("train_log_s*.jsonl"))
+                       for line in p.read_text(encoding="utf-8").splitlines() if '"final"' in line])
     (OUT / "seed_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     plot(runs)
     by = {r["key"]: r for r in rows}

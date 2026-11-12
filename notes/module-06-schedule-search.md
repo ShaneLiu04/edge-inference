@@ -3,7 +3,7 @@
 - 课程出处：MLC（陈天奇）《张量程序抽象》《自动程序优化》 · TVM AutoTVM / Ansor / MetaSchedule · MIT 6.5940《TinyEngine》的代码生成
 - 必读论文：Chen et al., Learning to Optimize Tensor Programs (AutoTVM), NeurIPS 2018；Zheng et al., Ansor: Generating High-Performance Tensor Programs for Deep Learning, OSDI 2020；Ragan-Kelley et al., Halide, PLDI 2013
 - 对应实验：[tensor-program-tuning](../solutions/mlc/tensor-program-tuning/README.md)
-- 实测结论：fp32 GEMM 的调度空间 30,240（256³）与 3,888（MobileNetV2 pw_expand_14）个点，每个点生成 C++ 实测；64 次预算、3 个种子，进化搜索中位最优 84.5 / 82.9 GFLOP/s，是教科书分块（35.4 / 53.1）的 2.4 / 1.6 倍，接近单线程 numpy（90.1 / 95.4）；岭回归代价模型的留出 Spearman 只有 0.47 / 0.53，中位数不如随机；同一调度换一个二进制复测差 −9%～+5%，搜索前 8 名复测平均低 3%–6%；`-mprefer-vector-width=512` 让 16 个候选里 13 个变慢，中位数低 12%–22%
+- 实测结论：fp32 GEMM 的调度空间 30,240（256³）与 3,888（MobileNetV2 pw_expand_14）个点，每个点生成 C++ 实测；64 次预算、3 个种子，进化搜索中位最优 84.5 / 82.9 GFLOP/s，是教科书分块（35.4 / 53.1）的 2.4 / 1.6 倍，接近单线程 numpy（90.1 / 95.4）；岭回归代价模型的留出 Spearman 只有 0.47 / 0.53，中位数不如随机；同一调度换一个二进制复测差 −9%～+5%，搜索前 8 名复测平均低 3%–6%；`-mprefer-vector-width=512` 让 16 个候选里 13 个变慢，中位数低 12%–22%。Xeon 8470Q 复测：512 位前 8 名全部更快（最优 173 对 115），最优调度换了位置，Spearman 0.54–0.56
 - 状态：已验证（数字来自 `artifacts/raw/summary.json`、`search_history.csv`、`vector_width.csv`，`claims.json` 校验）
 
 ## 摘要
@@ -149,6 +149,20 @@ oijk_iikj_t32x64x64    每行 64 / 8 = 8        1 次              16 ymm FMA
 `ojki_ikji_t2x64x64_p1_u4` 用 512 位编译后循环体从 32 条 ymm FMA 变成 16 条 zmm FMA，指令数减半，但 GFLOP/s 从 80.1 掉到 55.7。
 已知的一部分是频率：host-roofline 测到的 zmm 峰值 155 GFLOP/s 对应 2.42 GHz，而复测最好的 ymm 内核 87.5 GFLOP/s 超过了 2.42 GHz 下的 ymm 峰值 77.5，说明 256 位代码跑在更高的频率（系统报告最高 2.8 GHz，ymm 峰值 89.6）。频率最多解释 14%（2.42 / 2.8），其余约 20% 没有定位；虚拟机里拿不到性能计数器。
 
+### 换一台服务器：最优调度和向量宽度都不可迁移
+
+同一个搜索（4 种策略 × 3 个种子）在 Xeon 8470Q 上重跑（`artifacts/raw/xeon8470q/`）：
+
+```text
+问题            最优 本地 → 服务器   random 到 90%（种子 0）   Spearman       前 8 名 256 位 / 512 位
+square_256      85.7 → 114.7        20 → 13 次               0.47 → 0.54    115.1 / 173.1
+pw_expand_14    84.5 → 112.4        49 → 14 次               0.53 → 0.56    111.1 / 156.5
+```
+
+两个结论翻转。第一是向量宽度：本机 16 个候选里 13 个开 512 位变慢，服务器上前 8 名全部更快，最优 173 对 115。Sapphire Rapids 的 AVX-512 降频档位更温和，且有两个完整的 512 位 FMA 端口，
+所以 `-mprefer-vector-width=512` 本身就是一个要按目标机器搜索的旋钮。第二是最优点的位置：本机前 8 名多是 `ikji` / `ijki` 内层、64 宽的 tile，服务器前 8 名有 7 个是 `iikj` 内层、32×8 tile。
+没翻转的是代价模型的排序能力（两边 Spearman 都在 0.47–0.56）。这就是 AutoTVM / Ansor 要在目标设备上测量、并为每种硬件单独保存调优日志的原因。
+
 ## 白板估算
 
 ```text
@@ -207,7 +221,7 @@ oijk_iikj_t32x64x64    每行 64 / 8 = 8        1 次              16 ymm FMA
 4. 问：你怎么知道搜索结果是真的？
    答：三件事：每个内核对参考结果；同一调度复测（前 8 名平均低 3%–6%）；多种子报告中位数与范围。搜索报告的单次最优值天然偏高。
 5. 问：为什么 GCC 不默认用 512 位？
-   答：AVX-512 重负载会降频（本机 zmm 峰值对应 2.42 GHz，ymm 代码跑得更高），而且很多循环用不满 512 位；实测 13/16 个候选变慢。剩下的差距要靠性能计数器定位。
+   答：AVX-512 重负载会降频（本机 zmm 峰值对应 2.42 GHz，ymm 代码跑得更高），而且很多循环用不满 512 位；实测 13/16 个候选变慢。剩下的差距要靠性能计数器定位。但这是 Ice Lake 上的结论：Xeon 8470Q 上前 8 名开 512 位全部更快（173 对 115 GFLOP/s），所以向量宽度要按目标机器搜。
 6. 问：这和 mlsys-infra 里的调度搜索有什么不同？
    答：mlsys-infra M10 在 H100 单 SM 的解析模型上搜（3072 个点、只有 8 个在最优 5% 以内，进化比随机快 1.65 倍），没有噪声、可以跑 200 次重复；这里每个点都是实测，噪声与点之间的差距同量级，能比较的只是中位数和达到 90% 的次数。
 

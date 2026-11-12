@@ -4,7 +4,7 @@
 
 材料来自 MIT 6.5940 TinyML and Efficient Deep Learning（Song Han，Fall 2024）、Tianqi Chen 的 Machine Learning Compilation，以及 CMSIS-NN、TFLite Micro、ONNX Runtime、PULP Dory、llama.cpp 这些公开实现里反复出现的契约。取舍见 [CURRICULUM.md](CURRICULUM.md)。作者 [ShaneLiu04](https://github.com/ShaneLiu04)，与上述学校、实验室和项目无隶属关系。`solutions/` 是个人实现，正在修这些课的同学不要把它当作作业提交。
 
-全部实验在一台 4 物理核的 Ice Lake 服务器虚拟机（AVX-512 + VNNI，Windows，g++ 13.2）上完成，不需要 GPU 和开发板；每个数字都能由 `python scripts/check_claims.py` 对照原始结果复核。
+八个模块的实验先在一台 4 物理核的 Ice Lake 服务器虚拟机（AVX-512 + VNNI，Windows，g++ 13.2）上完成，不需要 GPU 和开发板。之后把同一份代码搬到 AutoDL 的 2 × Xeon Platinum 8470Q（Sapphire Rapids，多了 AMX）和 RTX 6000D 上重跑，看哪些结论换机器后会翻转；又加了第九个实验，用 llama.cpp 跑完整的 Qwen2.5-7B，检验单层 GEMV 推出的解码预测。每个数字都能由 `python scripts/check_claims.py` 对照原始结果复核。
 
 数据中心一侧（GPU、FlashAttention、GPTQ / AWQ、KV cache、分布式训练）在姊妹仓库 [mlsys-infra](https://gitee.com/liu-xingyan04/mlsys-infra)。两边按同一套结构写（16 节笔记、claims、VERIFICATION、作品集），对应关系见 [BRIDGE.md](BRIDGE.md)。
 
@@ -64,7 +64,8 @@ python tools/edge_calc.py pipeline --tiles 8 --dma 2 --compute 2
 | 某个实验的代码、测试、图和结论 | [按实验查](#实验实现)，总目录在 [`solutions/`](solutions/README.md) |
 | 数字从哪来、怎么复核 | [VERIFICATION.md](VERIFICATION.md)、[`claims.json`](claims.json) |
 | 官方题面和 starter | [`assignments/`](assignments/README.md)，来源记在 [UPSTREAM.md](UPSTREAM.md) |
-| 成文的实验报告（LaTeX / PDF） | [lab2 量化](reports/lab2-quantization/lab2_quantization_report.pdf)、[Xeon + RTX 6000D 服务器复测](reports/edge-runtime-server/edge_runtime_server_report.pdf)、[llama.cpp 7B](reports/llama-cpp-7b/llama_cpp_7b_report.pdf) |
+| 成文的实验报告（LaTeX / PDF） | [报告与服务器实测](#报告与服务器实测)，每个实验一份 |
+| 两台主机的同项对照 | [CROSS-HOST.md](interview/CROSS-HOST.md) |
 | 与 mlsys-infra 的对应 | [BRIDGE.md](BRIDGE.md) |
 | 论文、运行时、工具索引 | [`resources/`](resources/README.md) |
 
@@ -84,7 +85,7 @@ python tools/edge_calc.py pipeline --tiles 8 --dma 2 --compute 2
 | q4-gemv | [代码](solutions/edge-runtime/q4-gemv/cpp/) · [测试](solutions/edge-runtime/q4-gemv/tests/) · [图](solutions/edge-runtime/q4-gemv/artifacts/figures/) · [说明](solutions/edge-runtime/q4-gemv/README.md) | 与 gguf 逐字节一致；Q4 × Q8 单线程 4.6 倍于 fp32；GPT-2 280 窗口 fp32 29.95 / Q8_0 29.95 / Q4_0 31.88 / Q4_1 32.15 |
 | llama-cpp-7b | [代码](solutions/edge-runtime/llama-cpp-7b/code/) · [测试](solutions/edge-runtime/llama-cpp-7b/tests/) · [图](solutions/edge-runtime/llama-cpp-7b/artifacts/figures/) · [说明](solutions/edge-runtime/llama-cpp-7b/README.md) | Qwen2.5-7B 11 种 GGUF：GPU 解码达带宽线 93%（F16）→ 64%（Q2_K），CPU 上 K-quant 只到 44–56%；AMX 重排 prefill 2.8 倍；Q4_K_M 的 KLD 是 Q4_0 的 0.55 倍；端到端比 q4-gemv 预测多 0.41–0.47 ms/token |
 
-依赖：`pip install -r requirements.txt`（CPU torch、onnxruntime、numpy）和 PATH 上的 g++。每个实验：
+依赖：`pip install -r requirements.txt`（CPU torch、onnxruntime、numpy）和 PATH 上的 g++。q4-gemv 的 Triton 部分另见 `requirements-gpu.txt`；llama-cpp-7b 还要一份编译好的 llama.cpp，测试只测解析器，不需要它。每个实验：
 
 ```bash
 cd solutions/<course>/<lab>
@@ -92,7 +93,30 @@ python -m pytest -q tests
 python scripts/run_experiments.py
 ```
 
-全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；10 套 135 个测试，`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)。
+全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；10 套 135 个测试，`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接、报告与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)，每次检查的结果记在 [VERIFICATION.md](VERIFICATION.md)。
+
+## 报告与服务器实测
+
+每个实验一份中文报告（英文术语保留），从「这个实验要回答什么」讲起，逐张解读图，拿实测和模型对照，最后是面试追问、20 秒讲法和不能推出的结论。另有两份跨实验的报告：服务器复测和 llama.cpp 7B。
+
+服务器是 AutoDL 上的 2 × Xeon Platinum 8470Q（绑 NUMA1 的 16 个物理核，cgroup 限 22 核）和 RTX 6000D（84 GB，实测读 1333 GB/s）。两台机器都不开放性能计数器，报告里凡是端口压力、缓存命中都标明是推算。
+
+下表每一行只留一句我最想让人记住的结果，完整数字在 PDF 里。
+
+| 报告 | 页数 | 读完带走这一句 |
+| --- | ---: | --- |
+| [host-roofline 主机屋顶](reports/host-roofline/host_roofline_report.pdf) | 19 | 单核只读 13.4 GB/s 是在途请求数的上限（Little 定律），不是总线上限；int8 峰值只有 fp32 的 2.56 倍，不是 4 倍 |
+| [int8-kernels 整数契约](reports/int8-kernels/int8_kernels_report.pdf) | 18 | 两步定点舍入与 ORT 有 0.03–0.07% 的输出差 1 级；AMX 在 512³ 上是 VNNI 打包的 3.0 倍，K = 24 时只有 0.6 倍 |
+| [conv-kernels 卷积](reports/conv-kernels/conv_kernels_report.pdf) | 18 | implicit GEMM 与 im2col 一样快且工作区为 0；Winograd 在 56² 层本机快 16%，换到 Xeon 8470Q 慢 32% |
+| [dma-double-buffer 双缓冲](reports/dma-double-buffer/dma_double_buffer_report.pdf) | 17 | 加速比只取决于 c/m；CPU 上用线程模拟 DMA，模型预测最高 1.94 倍，服务器实测全部慢于串行 |
+| [tensor-program-tuning 调度搜索](reports/tensor-program-tuning/tensor_program_tuning_report.pdf) | 17 | 64 次实测找到教科书分块 2.4 倍的调度；代价模型 Spearman 只有 0.47，最优调度和 512 位向量换台机器都不成立 |
+| [q4-gemv 块量化解码](reports/q4-gemv/q4_gemv_report.pdf) | 21 | 与 gguf 逐字节一致；CPU 上 Q4 GEMV 受指令限，GPU 上 Triton 融合反量化达到 1327 GB/s，只剩搬字节 |
+| [llama-cpp-7b 真实 7B](reports/llama-cpp-7b/llama_cpp_7b_report.pdf) | 8 | 只算 Linear 的预测与 llama.cpp 端到端差一个 0.41–0.47 ms/token 的常数；CPU 上 Q8_0 最快，GPU 上 Q4_K_M 最快 |
+| [lab2-quantization 量化与 QAT](reports/lab2-quantization/lab2_quantization_report.pdf) | 11 | 五个种子的配对差：TensorRT 式 KL 比 fp32 低 24.55±2.42 个点，W4A8 QAT 只低 0.19±0.16；随种子变化的只有「哪一层最敏感」 |
+| [tinyengine-memory 激活规划](reports/tinyengine-memory/tinyengine_memory_report.pdf) | 15 | 按大小降序贪心在 11 个配置上正好等于存活下界；patch 推理把峰值降 3.75 倍，代价是整网 MACs 多 27% |
+| [edge-runtime-server 服务器复测](reports/edge-runtime-server/edge_runtime_server_report.pdf) | 14 | 同一份代码在 Xeon 8470Q 和 RTX 6000D 上重跑，大部分指标只改常数，三条「经验法则」翻转 |
+
+同一份代码在两台主机上的 34 项指标对照在 [CROSS-HOST.md](interview/CROSS-HOST.md)：大部分指标快 1.3–2.7 倍，但 Winograd 在 56² 层、512 位向量、两线程双缓冲这三条结论在服务器上翻转。
 
 ## 许可
 

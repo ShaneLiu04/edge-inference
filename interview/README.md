@@ -5,9 +5,9 @@
 | [HARDWARE-NUMBERS.md](HARDWARE-NUMBERS.md) | 所有估算的起点：十个数、本机实测屋顶、设备表，以及哪些数只是上界 |
 | [FORMULAS.md](FORMULAS.md) | 对方说「写一下」「估一下」。E1–E27，编号与笔记一致，每条带口算、实测锚点和常见错答 |
 | [SYSTEM-DESIGN.md](SYSTEM-DESIGN.md) | 设计题：256 KB MCU 视觉唤醒词、手机 1B LLM、NPU 算子回退、量化验收流水线 |
-| [PORTFOLIO.md](PORTFOLIO.md) | 讲自己做过的实验。6 个故事，每条有 20 秒结论、白板和「不能推出的结论」 |
+| [PORTFOLIO.md](PORTFOLIO.md) | 讲自己做过的实验。8 个故事，每条有 20 秒结论、白板和「不能推出的结论」 |
 | [CODING.md](CODING.md) | 手写题 C1–C22：requant、BN 折叠、KL 校准、arena 规划、Winograd、VNNI 打包、Q4 点积 |
-| [QUESTION-BANK.md](QUESTION-BANK.md) | 42 道按模块分组的概念题，每题带常见错答；M09 是换机器后翻转的结论 |
+| [QUESTION-BANK.md](QUESTION-BANK.md) | 45 道按模块分组的概念题，每题带常见错答；M09 是换机器后翻转的结论和真实 7B 的格式选型 |
 | [CROSS-HOST.md](CROSS-HOST.md) | 同一代码在 4 核 VM 与 Xeon 8470Q 上的 34 项指标对照，附加速比图 |
 | [COURSE-QA.md](COURSE-QA.md) | 8 讲的一句话答案 |
 | [ENGINEERING.md](ENGINEERING.md) | 「掉点 / 对不上 / 变慢 / 放不下怎么查」的排查顺序 |
