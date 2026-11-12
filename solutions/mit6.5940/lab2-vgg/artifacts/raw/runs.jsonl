@@ -1,0 +1,8 @@
+{"kind": "run", "git_commit": null, "git_dirty": null, "started": "2026-11-12T18:11:56+0800", "python": "3.12.3", "platform": "Linux-5.15.0-78-generic-x86_64-with-glibc2.35", "processor": "x86_64", "cpu_count": 208, "argv": ["scripts/run_experiments.py"]}
+{"part": "kmeans", "bits": 8, "acc_before_qat": 92.82, "acc_after_qat": 92.82, "qat_epochs": 0, "size_mib": 8.825416564941406}
+{"part": "kmeans", "bits": 4, "acc_before_qat": 91.61, "acc_after_qat": 92.84, "qat_epochs": 1, "size_mib": 4.419380187988281}
+{"part": "kmeans", "bits": 2, "acc_before_qat": 22.73, "acc_after_qat": 92.18, "qat_epochs": 5, "size_mib": 2.2200698852539062}
+{"part": "linear", "bits": 8, "acc": 92.94, "size_mib": 8.816665649414062}
+{"part": "linear", "bits": 6, "acc": 92.75, "size_mib": 6.617767333984375}
+{"part": "linear", "bits": 5, "acc": 92.36, "size_mib": 5.518318176269531}
+{"part": "linear", "bits": 4, "acc": 89.98, "size_mib": 4.4188690185546875}

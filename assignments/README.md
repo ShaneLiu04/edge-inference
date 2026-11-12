@@ -11,68 +11,68 @@
 
 1. **机器。** 这边是 CPU、MCU、NPU：LPDDR 或 SRAM 的字节、int32 累加、定点 requant。那边是 H100 / A100：HBM、Tensor Core、多卡和在线服务。本机拐点是 11.5 FLOP/byte，H100 的屋顶拐点是 295 FLOP/byte，两套数不能拿来互相解释。
 2. **量化谁求解、谁执行。** 幅度剪枝、Wanda、GPTQ、AWQ、SmoothQuant、LLM.int8 的求解在 mlsys-infra 的 [编译与压缩](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/solutions/cmu15849/compiler-compression/README.md)。这边只消费它们产出的布局：ORT 的 QLinearConv、llama.cpp 的 Q4_0 / Q4_K_M，并核对执行语义（逐位、逐字节、困惑度）。
-3. **编译器做到哪一层。** 这边不安装 TVM。调度搜索是自己生成 C++、在真机上测量，噪声和最优调度是否可迁移都写进结果。那边讲融合、`torch.compile` 和 GPU kernel。
+3. **编译器做到哪一层。** 这边的编译器在 CPU 上：MLC 作业 1 用 TVM 0.27 的 Relax 与 MetaSchedule 跑完，调度搜索的闭环另外自己生成 C++、在真机上测量，噪声和最优调度是否可迁移都写进结果。那边讲融合、`torch.compile` 和 GPU kernel。
 4. **协议相同才能对表。** GPT-2 的 fp32 困惑度两边用同一协议（wikitext-2、1024 token 窗口），可以直接对。Qwen2.5-7B 的绝对困惑度不能对：那边是 Hugging Face、ctx 1024，这边是 llama-perplexity、ctx 512，只比较相对涨幅。
 
 联系也有四条，约定写在 [BRIDGE.md](../BRIDGE.md) 的第一张表里：结果文件格式、计时分位、`claims.json`、报告和笔记校验器是同一套。公式是同一条，只换带宽和累加器。面试时从任一侧切到另一侧的四句问法也在 BRIDGE 末节。
 
-下面每道官方题都按这个边界处理。标成「不重做」的，是已经在 mlsys-infra 里有实测的求解问题，不是还没写完。
+下面每道官方题都按这个边界处理：官方题面本身在这里按课程协议做完，同类问题在 mlsys-infra 里更大规模的实测作为对照列出。
 
 ## MIT 6.5940
 
-课程页写的五次 lab：剪枝、量化、神经架构搜索、LLM 压缩、在笔记本上部署 LLM。2025 秋因教师学术休假未开设。
+课程页写的五次 lab：剪枝、量化、神经架构搜索、LLM 压缩、在笔记本上部署 LLM。2025 秋因教师学术休假未开设，题面与数据以 Fall 2024 为准。Lab 1、2、4、5 的合订报告在 [reports/mit6.5940-labs](../reports/mit6.5940-labs/mit65940_labs_report.pdf)。
 
 ### Lab 1　剪枝
 
-官方要的是幅度剪枝和结构化稀疏之后精度掉多少。本仓库没有稀疏 GEMM，不重做。
+官方题：VGG（CIFAR-10）上做细粒度剪枝（敏感度扫描、按层选稀疏度、尺寸 ≤ 25% 时微调回 ≥ 92.5%）和通道剪枝（按下一层权重的 Frobenius 范数排序、MACs 与实测延迟）。
+[lab1-pruning](../solutions/mit6.5940/lab1-pruning/README.md)：细粒度剪到 23.6% 尺寸，5 轮微调后 92.72%（稠密 92.95%）；通道剪 30% 时 MACs 0.504 倍、单线程延迟 0.64 倍、微调后 92.52%。细粒度稀疏在稠密 kernel 上不变快（9.25 → 9.18 ms）。
 
-mlsys-infra 在 GPT-2 124M 上测过一次性剪枝：50% 稀疏时幅度剪枝困惑度 538.35，Wanda 47.21；2:4 时幅度 735.95，Wanda 116.38。同一份实验还量了 2:4 cuSPARSELt 在大 GEMM 上 1.54–1.58 倍、M ≤ 2048 时更慢。端侧面试如果被问到「稀疏能不能加速小模型」，用的是这组数，不是再剪一次 MobileNet。
+mlsys-infra 在 GPT-2 124M 上测过一次性剪枝：50% 稀疏时幅度剪枝困惑度 538.35，Wanda 47.21；2:4 时幅度 735.95，Wanda 116.38。同一份实验还量了 2:4 cuSPARSELt 在大 GEMM 上 1.54–1.58 倍、M ≤ 2048 时更慢。
 
 ### Lab 2　量化
 
-官方用 VGG 做 k-means 和线性量化。这边换成 CIFAR-10 上 20.9 万参数的 MobileNetV2 式网络，因为端侧量化的难点是 depthwise、线性瓶颈和残差，不是 VGG 的 3×3 堆叠。
+官方题：VGG 上的 k-means 量化（含 QAT 更新中心）与线性量化（BN 融合、整数卷积与线性层）。
+[lab2-vgg](../solutions/mit6.5940/lab2-vgg/README.md)：k-means 8 / 4 / 2 bit 经 QAT 为 92.82 / 92.84 / 92.18%；整数 int8 VGG 92.94%，与 fp32 只差 1 张图，int4 PTQ 89.98%。
 
-交了两处实现。[lab2-quantization](../solutions/mit6.5940/lab2-quantization/README.md) 做粒度、五种校准、敏感度、混合精度、QAT 和 ORT 部署；五个种子的配对差写在同一篇 README 里。[int8-kernels](../solutions/edge-runtime/int8-kernels/README.md) 做官方 notebook 停在模拟量化之前的那一段：int8×int8→int32、定点 requant 与 ORT 逐元素比对、VNNI 打包和 AMX。
-
-LLM 的离群通道和 GPTQ 不在这次 lab 里，见 Lab 4。
+端侧量化的难点在 depthwise、线性瓶颈和残差，所以另做了两处。[lab2-quantization](../solutions/mit6.5940/lab2-quantization/README.md) 在 CIFAR-10 上 20.9 万参数的 MobileNetV2 式网络上做粒度、五种校准、敏感度、混合精度、QAT 和 ORT 部署；五个种子的配对差写在同一篇 README 里。[int8-kernels](../solutions/edge-runtime/int8-kernels/README.md) 做官方 notebook 停在模拟量化之前的那一段：int8×int8→int32、定点 requant 与 ORT 逐元素比对、VNNI 打包和 AMX。
 
 ### Lab 3　神经架构搜索
 
-官方是在延迟或 SRAM 约束下搜一个网络。本仓库不跑搜索。一次搜索给出的是某个空间、某份预算下的一个网，换预算结论就变。模块 01 和模块 04 保留的是对任何网都成立的那笔账：SRAM 是硬约束，激活峰值有下界，patch 用重算换峰值。mlsys-infra 同样不做 NAS。
+官方题：在 MCUNet 的 OFA 超网里，用效率预测器（峰值 SRAM、MACs）和 MLP 精度预测器做随机与进化搜索，满足 250 KB / 60M MACs 下 ≥ 92.5%（bonus 200 KB / 30M 下 ≥ 90%），并判断 256 KB / 15M 与 64 KB 是否可行。
+超网代码与 VWW 数据来自课程分发的 `mcunetv2-dev` 与 `data` 包；这一题和以它为起点的期末项目（子网 → int8 → 内存规划与 patch → MLPerf Tiny 四列）在做，结果出来后补在这里。
+不依赖具体网络的那笔账已经在模块 01 和模块 04：SRAM 是硬约束，激活峰值有下界，patch 用重算换峰值。
 
 ### Lab 4　LLM 压缩
 
-官方是 GPTQ、AWQ、SmoothQuant 这一类权重要么从数据里求出来。求解在 mlsys-infra，不在这里重做。那边 GPT-2 124M 上 W4 g128 的困惑度涨幅是 RTN +11.1%、AWQ +8.0%、GPTQ +4.1%；Qwen2.5-7B 上 W4 g128 是 RTN +5.9%、AWQ +3.8%、GPTQ +2.9%（Hugging Face，ctx 1024）。
+官方题：OPT-1.3B 上 W3 g128 的 RTN、保留 1% 显著通道为 fp16（按激活 / 权重 / 随机）、AWQ 缩放搜索，bonus 截断搜索。
+[lab4-awq](../solutions/mit6.5940/lab4-awq/README.md)：RTN W3 困惑度 14.47 → 107.97；按激活保留 1% 是 16.69，按权重 103.41、随机 106.79；AWQ 不保留任何 fp16 通道 16.87，加截断 16.04；W4 时 AWQ 14.78。
 
-这边用 llama.cpp 消费同类布局。[llama-cpp-7b](../solutions/edge-runtime/llama-cpp-7b/README.md) 里 Q4_K_M 加 imatrix 的相对涨幅是 +1.2%（7.1016 → 7.1846，llama-perplexity，ctx 512）。imatrix 和 AWQ / GPTQ 一样按激活给误差加权，协议不同，只比涨幅。
+mlsys-infra 在更大的模型上做了 GPTQ / AWQ 的对照：GPT-2 124M 上 W4 g128 的困惑度涨幅是 RTN +11.1%、AWQ +8.0%、GPTQ +4.1%；Qwen2.5-7B 上 W4 g128 是 RTN +5.9%、AWQ +3.8%、GPTQ +2.9%（Hugging Face，ctx 1024）。
+这边另用 llama.cpp 消费同类布局：[llama-cpp-7b](../solutions/edge-runtime/llama-cpp-7b/README.md) 里 Q4_K_M 加 imatrix 的相对涨幅是 +1.2%（llama-perplexity，ctx 512），只比涨幅。
 
 ### Lab 5　在笔记本上部署 LLM
 
-官方走 AWQ 加 TinyChat。这边不复现 TinyChat 的 CUDA kernel。部署问题改成块量化的字节、GEMV 能拿到多少带宽、整网和「层时间之和」差多少，实现是 [q4-gemv](../solutions/edge-runtime/q4-gemv/README.md) 和 [llama-cpp-7b](../solutions/edge-runtime/llama-cpp-7b/README.md)。CPU 上 Q8_0 最快，GPU 上 Q4_K_M 最快，这个排序官方 notebook 里没有。
+官方题：在 TinyChatEngine 里补完五个 W4A8 GEMM kernel（展开、多线程、SIMD、多线程 + 展开、全部），跑 LLaMA2-7B-chat。
+[lab5-tinychat](../solutions/mit6.5940/lab5-tinychat/README.md)：x86 AVX2 与 ARM NEON 两条分支都补了，六个实现全部通过官方检查；`all_techniques` 26.09 GOP/s，是参考实现的 28.2 倍，端到端 decode 12.5 倍（14,427 → 1,150 ms/token）。课程 Makefile 是 `-O0`，换 `-O3` 后 kernel 差距 51.5 倍、端到端 191 ms/token。
+
+块量化的字节、GEMV 的带宽、整网与「层时间之和」的差距在 [q4-gemv](../solutions/edge-runtime/q4-gemv/README.md) 和 [llama-cpp-7b](../solutions/edge-runtime/llama-cpp-7b/README.md)：CPU 上 Q8_0 最快，GPU 上 Q4_K_M 最快。
 
 ## Machine Learning Compilation
 
-作业在 `mlc-ai/notebooks` 的 `assignment/`。本仓库不安装 `mlc-ai-nightly`，不把 notebook 拷进来。
+作业在 `mlc-ai/notebooks` 的 `assignment/`。课程用的是 2022 年的 `mlc-ai-nightly`；这边迁移到 PyPI 上的 TVM 0.27，不把 notebook 拷进来。
 
 ### Assignment 1　端到端模型执行
 
 官方四段：准备一个 Fashion-MNIST 的小 CNN；用 Relax `BlockBuilder.emit_te` 把 PyTorch 模型迁成 IRModule；把卷积注册成外部库函数；再对这个 IRModule 里的 conv2d 做 schedule。
-
-这四段的机制在本仓库是拆开测的，没有合成一个 TVM IRModule。
-
-| 官方的那一步 | 本仓库里对应的实验 |
-| --- | --- |
-| 模型从框架迁到可执行的图 | [lab2](../solutions/mit6.5940/lab2-quantization/README.md) 导出 ONNX，ORT 跑同一张图；[tinyengine-memory](../solutions/mit6.5940/tinyengine-memory/README.md) 用 `torch.fx` 读出每个激活的生死 |
-| 一层交给外部库 | [int8-kernels](../solutions/edge-runtime/int8-kernels/README.md) 用 ORT 的 `QLinearConv` 做逐位参照；[q4-gemv](../solutions/edge-runtime/q4-gemv/README.md) 的打包与 gguf 逐字节一致 |
-| 在整张图里变换其中一层 | [tensor-program-tuning](../solutions/mlc/tensor-program-tuning/README.md)：自己生成 C++，在真机上搜调度 |
-
-把同一张网交给几套运行时、包括 TVM Relax 的那一次端到端对照，在 [runtime-compare](../solutions/edge-runtime/runtime-compare/README.md)，见文末。
+[e2e-relax](../solutions/mlc/e2e-relax/README.md)（报告 [mlc-e2e-relax](../reports/mlc-e2e-relax/mlc_e2e_relax_report.pdf)）：四段全部在 TVM 0.27 上做完，另加 linear0 的调度与 MetaSchedule。五种写法准确率都是 83.88%，与 PyTorch 最大误差 4.2e-6。
+默认编译 2375 µs / batch，其中 linear0 占 2344 µs；手写卷积 + linear0 调度 157 µs；MetaSchedule 44 µs；PyTorch eager 505 µs。
+MetaSchedule 的调优数据库会因为融合前后 PrimFunc 不同而静默失效，修法和测试写在该 README 的「踩过的坑」第 1 条。
 
 ### Assignment 2–4　TensorIR、自动优化、集成
 
-官方在 TVM 里写 TensorIR、跑 AutoTVM / Ansor、再接回编译器。这边用 [tensor-program-tuning](../solutions/mlc/tensor-program-tuning/README.md) 把闭环做完：30,240 个调度点、四种搜索、岭回归代价模型、复测、256 / 512 位向量。不调用 TVM。和官方实现的差别写在该实验 README 的「和原课程的差异」里：没有 sketch 生成，没有 XGBoost，每个点都是实测。
+官方在 TVM 里写 TensorIR、跑 AutoTVM / Ansor、再接回编译器。这边用 [tensor-program-tuning](../solutions/mlc/tensor-program-tuning/README.md) 把闭环自己做一遍：30,240 个调度点、四种搜索、岭回归代价模型、复测、256 / 512 位向量。和官方实现的差别写在该实验 README 的「和原课程的差异」里：没有 sketch 生成，没有 XGBoost，每个点都是实测。TVM 自己的 MetaSchedule 在 e2e-relax 里跑完：8 核上 640 次试验 604 s。
 
-runtime-compare 量出了不调优的 TVM 有多慢：同一张 micronet，TVM 0.27 不调优要 4107 µs，PyTorch eager 1173 µs，ORT 202 µs。也就是说，作业 2–4 的调优正是 TVM 追上部署运行时所缺的那一步。在无卡容器上用 MetaSchedule 调这张网没有调完：24 个任务，第一个任务的第一批 62 个候选 15 分钟没量完，原因记在该 README 的第 8 条。
+runtime-compare 量出了不调优的 TVM 有多慢：同一张 micronet，TVM 0.27 不调优要 4107 µs，PyTorch eager 1173 µs，ORT 202 µs。那次在 0.5 核的无卡容器上 MetaSchedule 没有调完；e2e-relax 在 8 核上调完后，Fashion-MNIST CNN 从 2375 µs 降到 44 µs，说明差的正是调优这一步。
 
 ## Harvard TinyML 与 MLPerf Tiny
 

@@ -8,7 +8,7 @@
 
 | 材料 | 版本 | 本仓库拿哪一段 | 入口 |
 | --- | --- | --- | --- |
-| MIT 6.5940 TinyML and Efficient Deep Learning Computing | 2024 秋，Song Han。2025 秋因学术休假未开 | Lab 2 量化；MCUNet、TinyEngine 两讲。Lab 1 剪枝、Lab 4/5 的 LLM 压缩和笔记本部署改到 mlsys-infra | https://hanlab.mit.edu/courses/2024-fall-65940 |
+| MIT 6.5940 TinyML and Efficient Deep Learning Computing | 2024 秋，Song Han。2025 秋因学术休假未开 | 五个 lab 按官方题面做（Lab 3 在做）；MCUNet、TinyEngine 两讲进模块 01、04。GPTQ 与更大模型上的剪枝、AWQ 对照在 mlsys-infra | https://hanlab.mit.edu/courses/2024-fall-65940 |
 | Machine Learning Compilation | 2022 夏，Tianqi Chen。中文班同期 | 端到端执行、TensorIR、自动优化、计算图。作业在 `mlc-ai/notebooks` 的 `assignment/` | https://mlc.ai/summer22-zh/ |
 | Harvard TinyML 与 CS249r | HarvardX 微专业；CS249r 2020/2022/2023 | 256 KB 级 SRAM 上的唤醒词 / 视觉唤醒词任务定义。板级例程不入库 | https://mlsysbook.ai/courses/tinyml/ |
 | CMSIS-NN | 现行主线 | int8 卷积的对称权重、per-channel scale、int32 bias。当契约读，不链接进本仓库 | https://github.com/ARM-software/CMSIS-NN |
@@ -17,7 +17,7 @@
 | PULP Dory、Deeploy | 论文与仓库现行主线 | 分块、DMA、双缓冲的代价模型 | https://github.com/pulp-platform/deeploy |
 | ExecuTorch、ncnn、MNN、RKNN Model Zoo、TensorRT | 现行主线 | 导出、分区、不支持算子的回退。闭源 SDK 不入库 | 见 [resources](resources/README.md) |
 
-6.5940 的五个 lab 是：剪枝、量化、神经架构搜索、LLM 压缩、在笔记本上部署 LLM。Lab 3 的 NAS 只在模块 01 里作为一个容量约束的搜索问题被提到，不单开实验。
+6.5940 的五个 lab 是：剪枝、量化、神经架构搜索、LLM 压缩、在笔记本上部署 LLM。八个模块只取其中与端侧部署契约有关的部分；Lab 1、2、4、5 和 MLC 作业 1 另按官方题面独立做了一遍（[lab1-pruning](solutions/mit6.5940/lab1-pruning/README.md)、[lab2-vgg](solutions/mit6.5940/lab2-vgg/README.md)、[lab4-awq](solutions/mit6.5940/lab4-awq/README.md)、[lab5-tinychat](solutions/mit6.5940/lab5-tinychat/README.md)、[e2e-relax](solutions/mlc/e2e-relax/README.md)），Lab 3 的 NAS 和期末项目在做。
 
 ## 8 个模块
 
@@ -57,7 +57,7 @@
 5. 至少一道带常见错答的题进 [interview/QUESTION-BANK.md](interview/QUESTION-BANK.md)，一句话答案进 [COURSE-QA](interview/COURSE-QA.md)。
 6. 一份 LaTeX 报告，放在 `reports/<lab>/`，带参考文献（`scripts/check_reports.py` 校验）。
 
-八个模块六件都已交付，第 9 个实验 llama-cpp-7b 和第 10 个实验 runtime-compare 也有 README、测试、claims 和报告，状态见 [PROGRESS.md](PROGRESS.md)。
+八个模块六件都已交付，第 9 个实验 llama-cpp-7b、第 10 个实验 runtime-compare 和五个官方作业也有 README、测试、claims 和报告，状态见 [PROGRESS.md](PROGRESS.md)。
 
 ## 岗位怎么读
 

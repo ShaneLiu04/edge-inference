@@ -9,7 +9,7 @@
 - [x] 面试材料：[速查表](interview/HARDWARE-NUMBERS.md)、[公式卡 E1–E27](interview/FORMULAS.md)、[设计题](interview/SYSTEM-DESIGN.md)、[作品集](interview/PORTFOLIO.md)、[手写题](interview/CODING.md)、[题库](interview/QUESTION-BANK.md)、[课程问答](interview/COURSE-QA.md)、[工程手册](interview/ENGINEERING.md)
 - [x] 白板估算计算器 [`tools/edge_calc.py`](tools/edge_calc.py) 和共享 harness [`edge_harness/`](edge_harness/)，带测试
 - [x] 统一的测试入口 `scripts/run-all-tests.ps1`、仓库检查 `scripts/check-repo.ps1`、数字校验 `scripts/check_claims.py`
-- [x] 官方作业的分工写进 [assignments/README.md](assignments/README.md)：剪枝、GPTQ、AWQ、NAS、唤醒词都不在这边重做；starter 按 [UPSTREAM.md](UPSTREAM.md) 不镜像
+- [x] 官方作业的分工写进 [assignments/README.md](assignments/README.md)；starter 按 [UPSTREAM.md](UPSTREAM.md) 不镜像
 
 ## 实验：4 核 Ice Lake 虚拟机（2026-11-03）
 
@@ -40,12 +40,23 @@
 - [x] 每个实验一份 LaTeX 报告（共 11 份，含服务器复测），每份带参考文献；`scripts/check_reports.py` 接进 `check-repo.ps1`
 - [x] 顶层文档（README、PROGRESS、VERIFICATION、CURRICULUM、BRIDGE、作品集）同步到 10 个实验、123 条 claims
 
+## 官方作业：MIT 6.5940 与 MLC（2026-11-12，AutoDL 上的 Xeon 8470Q + RTX 6000D）
+
+按课程题面和协议独立实现，不复制官方 notebook。Lab 1、2、4、5 合订报告 [PDF](reports/mit6.5940-labs/mit65940_labs_report.pdf)，MLC 作业 1 报告 [PDF](reports/mlc-e2e-relax/mlc_e2e_relax_report.pdf)。
+
+- [x] Lab 1 [lab1-pruning](solutions/mit6.5940/lab1-pruning/README.md)：细粒度 23.6% 尺寸 92.72%；通道 30% MACs 0.504 倍、延迟 0.64 倍、92.52%
+- [x] Lab 2 [lab2-vgg](solutions/mit6.5940/lab2-vgg/README.md)：k-means 8 / 4 / 2 bit QAT 后 92.82 / 92.84 / 92.18%；整数 int8 VGG 92.94%
+- [x] Lab 4 [lab4-awq](solutions/mit6.5940/lab4-awq/README.md)：OPT-1.3B W3 RTN 107.97 → AWQ 16.87、加截断 16.04；按激活保留 1% 16.69，按权重 103.41
+- [x] Lab 5 [lab5-tinychat](solutions/mit6.5940/lab5-tinychat/README.md)：五个 W4A8 kernel 全部通过；`all_techniques` 28.2 倍，LLaMA2-7B decode 12.5 倍；`-O3` 下 51.5 倍、191 ms/token
+- [x] MLC 作业 1 [e2e-relax](solutions/mlc/e2e-relax/README.md)：TVM 0.27 Relax 五种写法 83.88%；默认 2375 µs → 手写调度 157 µs → MetaSchedule 44 µs；找到调优数据库静默失效的原因
+- [ ] Lab 3 NAS 与期末项目（MCUNet 子网 → int8 → 内存规划与 patch → MLPerf Tiny 四列）：等课程的 `mcunetv2-dev` 代码与 VWW 数据上传到服务器
+
 ## 还没做的
 
 - [ ] 开发板实测：没有 MCU、NPU、Pi 5、Orin，这些设备的数字是设备表参数与模型推算，标注为上界或模型输出。
 - [ ] 性能计数器：本地虚拟机和 AutoDL 容器都没有 perf / ncu 权限，512 位向量变慢的原因、Q4 内核与 K-quant 的端口瓶颈只给出估算。
 - [x] 同一份 micronet 走 6 条路径（PyTorch、ORT fp32、ORT int8、LiteRT、ExecuTorch、TVM）：[runtime-compare](solutions/edge-runtime/runtime-compare/README.md)，AutoDL 无卡容器，2026-11-12 — [报告](reports/runtime-compare/runtime_compare_report.pdf)
-- [ ] MetaSchedule 调优过的 TVM：24 个任务，0.5 核上第一批 62 个候选 15 分钟没量完，需要 CPU 配额更高的机器。
+- [ ] runtime-compare 那张 micronet 的 MetaSchedule：0.5 核上第一批 62 个候选 15 分钟没量完。8 核上的 MetaSchedule 已在 [e2e-relax](solutions/mlc/e2e-relax/README.md) 跑通（640 次试验 604 s），micronet 本身还没在 8 核上重调。
 - [ ] 搜索器、规划器、块格式仍是自写的最小实现，与官方逐字节或逐位对齐的地方在各 README 写明。
 - [ ] llama.cpp 那 0.45 ms/token 的固定成本没有用 nsys 拆到具体算子。
 

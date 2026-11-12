@@ -1,0 +1,18 @@
+{
+  "host": "Intel64 Family 6 Model 106 Stepping 6, GenuineIntel",
+  "torch": "2.6.0+cpu",
+  "dense_ms_1t": 24.099850095808506,
+  "dense_ms_4t": 9.09525016322732,
+  "fine_grained_ms_1t": 23.239400703459978,
+  "fine_grained_ms_4t": 8.912950288504362,
+  "channel_0.1_ms_1t": 20.75354987755418,
+  "channel_0.1_ms_4t": 7.976300083100796,
+  "channel_0.2_ms_1t": 18.267699982970953,
+  "channel_0.2_ms_4t": 6.714950315654278,
+  "channel_0.3_ms_1t": 14.87544970586896,
+  "channel_0.3_ms_4t": 5.882000084966421,
+  "channel_0.4_ms_1t": 10.232749860733747,
+  "channel_0.4_ms_4t": 4.390150308609009,
+  "channel_0.5_ms_1t": 7.6591502875089645,
+  "channel_0.5_ms_4t": 3.241600003093481
+}

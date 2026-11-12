@@ -1,0 +1,13 @@
+{"kind": "run", "git_commit": null, "git_dirty": null, "started": "2026-11-12T18:22:33+0800", "python": "3.12.3", "platform": "Linux-5.15.0-78-generic-x86_64-with-glibc2.35", "processor": "x86_64", "cpu_count": 208, "argv": ["scripts/run_experiments.py"]}
+{"method": "FP16", "bits": 16, "ppl": 14.469232559204102, "eval_s": 2.0949263125658035, "size_mib": 2509.609375}
+{"method": "RTN W3", "bits": 3, "ppl": 107.9658203125, "eval_s": 1.8488310016691685, "size_mib": 658.984375}
+{"method": "RTN W4", "bits": 4, "ppl": 15.083345413208008, "eval_s": 1.846904642879963, "size_mib": 804.109375}
+{"method": "1% fp16 (activation)", "bits": 3, "ppl": 16.694677352905273, "eval_s": 1.8453832007944584, "size_mib": 677.4906158447266, "frac": 0.01}
+{"method": "1% fp16 (weight)", "bits": 3, "ppl": 103.41243743896484, "eval_s": 1.8458496443927288, "size_mib": 677.4906158447266, "frac": 0.01}
+{"method": "1% fp16 (random)", "bits": 3, "ppl": 106.78855895996094, "eval_s": 1.8380503877997398, "size_mib": 677.4906158447266, "frac": 0.01}
+{"method": "0.1% fp16 (activation)", "bits": 3, "ppl": 17.389514923095703, "eval_s": 1.8412331324070692, "size_mib": 660.8349933624268, "frac": 0.001}
+{"method": "3.0% fp16 (activation)", "bits": 3, "ppl": 16.569101333618164, "eval_s": 1.8406075742095709, "size_mib": 714.5031147003174, "frac": 0.03}
+{"method": "AWQ W3", "bits": 3, "ppl": 16.87221908569336, "eval_s": 1.8395471051335335, "size_mib": 658.984375, "search_s": 16.66812887042761}
+{"method": "AWQ W3 + clip", "bits": 3, "ppl": 16.036001205444336, "eval_s": 1.838932629674673, "size_mib": 658.984375, "search_s": 27.820064721629024}
+{"method": "AWQ W4", "bits": 4, "ppl": 14.783214569091797, "eval_s": 1.8360959943383932, "size_mib": 804.109375, "search_s": 9.917824700474739}
+{"method": "AWQ W4 + clip", "bits": 4, "ppl": 14.802867889404297, "eval_s": 1.8363118954002857, "size_mib": 804.109375, "search_s": 22.648710634559393}

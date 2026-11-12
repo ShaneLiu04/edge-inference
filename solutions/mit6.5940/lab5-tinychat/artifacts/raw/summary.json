@@ -1,0 +1,140 @@
+{
+  "host": "Intel Xeon Platinum 8470Q (AutoDL), g++ 11.4, -O0 -mavx2 -mfma",
+  "upstream_commit": "f241215",
+  "kernels": {
+    "reference": {
+      "passed": true,
+      "avg_ms": 283.43399,
+      "gops": 0.924885
+    },
+    "loop_unrolling": {
+      "passed": true,
+      "avg_ms": 140.556,
+      "gops": 1.865041
+    },
+    "multithreading": {
+      "passed": true,
+      "avg_ms": 78.545998,
+      "gops": 3.33742
+    },
+    "simd_programming": {
+      "passed": true,
+      "avg_ms": 103.456001,
+      "gops": 2.53385
+    },
+    "multithreading_loop_unrolling": {
+      "passed": true,
+      "avg_ms": 38.691002,
+      "gops": 6.775288
+    },
+    "all_techniques": {
+      "passed": true,
+      "avg_ms": 10.049,
+      "gops": 26.085018
+    }
+  },
+  "e2e": {
+    "all_techniques": {
+      "ms_per_token": 1149.889038,
+      "tokens": 31,
+      "total_ms": 35646.558594
+    },
+    "multithreading_loop_unrolling": {
+      "ms_per_token": 2252.118896,
+      "tokens": 31,
+      "total_ms": 69815.710938
+    },
+    "simd_programming": {
+      "ms_per_token": 5653.837891,
+      "tokens": 31,
+      "total_ms": 175268.96875
+    },
+    "multithreading": {
+      "ms_per_token": 4416.682129,
+      "tokens": 31,
+      "total_ms": 136917.15625
+    },
+    "loop_unrolling": {
+      "ms_per_token": 6998.007812,
+      "tokens": 31,
+      "total_ms": 216938.25
+    },
+    "reference": {
+      "ms_per_token": 14427.044922,
+      "tokens": 31,
+      "total_ms": 447238.4375
+    }
+  },
+  "all_passed": true,
+  "speedup_vs_reference": {
+    "reference": 1.0,
+    "loop_unrolling": 2.0165112419381868,
+    "multithreading": 3.6084702422463333,
+    "simd_programming": 2.7396379009282237,
+    "multithreading_loop_unrolling": 7.32554641928456,
+    "all_techniques": 28.20352584375355
+  },
+  "e2e_speedup_vs_reference": {
+    "all_techniques": 12.546467046153369,
+    "multithreading_loop_unrolling": 6.4059872450002295,
+    "simd_programming": 2.5517259603367,
+    "multithreading": 3.266489301385719,
+    "loop_unrolling": 2.061593143302996,
+    "reference": 1.0
+  },
+  "O3": {
+    "kernels": {
+      "reference": {
+        "passed": true,
+        "avg_ms": 60.604004,
+        "gops": 4.325523
+      },
+      "loop_unrolling": {
+        "passed": true,
+        "avg_ms": 24.158001,
+        "gops": 10.850825
+      },
+      "multithreading": {
+        "passed": true,
+        "avg_ms": 18.086,
+        "gops": 14.493664
+      },
+      "simd_programming": {
+        "passed": true,
+        "avg_ms": 5.36,
+        "gops": 48.899254
+      },
+      "multithreading_loop_unrolling": {
+        "passed": true,
+        "avg_ms": 6.479,
+        "gops": 40.458691
+      },
+      "all_techniques": {
+        "passed": true,
+        "avg_ms": 1.177,
+        "gops": 222.70325
+      }
+    },
+    "all_passed": true,
+    "speedup_vs_reference": {
+      "reference": 1.0,
+      "loop_unrolling": 2.508557924671768,
+      "multithreading": 3.350730998309338,
+      "simd_programming": 11.30481886236647,
+      "multithreading_loop_unrolling": 9.353479567673089,
+      "all_techniques": 51.485855005279134
+    },
+    "e2e": {
+      "all_techniques": {
+        "ms_per_token": 191.167007,
+        "tokens": 31,
+        "total_ms": 5926.178223
+      },
+      "reference": {
+        "ms_per_token": 3084.970215,
+        "tokens": 31,
+        "total_ms": 95634.101562
+      }
+    }
+  }
+}

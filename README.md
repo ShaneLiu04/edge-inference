@@ -4,7 +4,7 @@
 
 材料来自 MIT 6.5940 TinyML and Efficient Deep Learning（Song Han，Fall 2024）、Tianqi Chen 的 Machine Learning Compilation，以及 CMSIS-NN、TFLite Micro、ONNX Runtime、PULP Dory、llama.cpp 这些公开实现里反复出现的契约。取舍见 [CURRICULUM.md](CURRICULUM.md)。作者 [ShaneLiu04](https://github.com/ShaneLiu04)，与上述学校、实验室和项目无隶属关系。`solutions/` 是个人实现，正在修这些课的同学不要把它当作作业提交。
 
-八个模块的实验先在一台 4 物理核的 Ice Lake 服务器虚拟机（AVX-512 + VNNI，Windows，g++ 13.2）上完成，不需要 GPU 和开发板。之后把同一份代码搬到 AutoDL 的 2 × Xeon Platinum 8470Q（Sapphire Rapids，多了 AMX）和 RTX 6000D 上重跑，看哪些结论换机器后会翻转；又加了第九个实验，用 llama.cpp 跑完整的 Qwen2.5-7B，检验单层 GEMV 推出的解码预测；第十个实验 runtime-compare 把 lab2 的同一张网交给 PyTorch、ONNX Runtime fp32 / int8、LiteRT、ExecuTorch、TVM 六条路径，在 AutoDL 无卡容器上比精度和 CPU 时间。每个数字都能由 `python scripts/check_claims.py` 对照原始结果复核。
+八个模块的实验先在一台 4 物理核的 Ice Lake 服务器虚拟机（AVX-512 + VNNI，Windows，g++ 13.2）上完成，不需要 GPU 和开发板。之后把同一份代码搬到 AutoDL 的 2 × Xeon Platinum 8470Q（Sapphire Rapids，多了 AMX）和 RTX 6000D 上重跑，看哪些结论换机器后会翻转；又加了第九个实验，用 llama.cpp 跑完整的 Qwen2.5-7B，检验单层 GEMV 推出的解码预测；第十个实验 runtime-compare 把 lab2 的同一张网交给 PyTorch、ONNX Runtime fp32 / int8、LiteRT、ExecuTorch、TVM 六条路径，在 AutoDL 无卡容器上比精度和 CPU 时间。最后按课程题面把 MIT 6.5940 的 Lab 1、2、4、5 和 MLC 作业 1 独立做了一遍（VGG 剪枝与量化、OPT-1.3B 上的 AWQ、TinyChat 的 W4A8 kernel 与 LLaMA2-7B、TVM 0.27 的 Relax 与 MetaSchedule），Lab 3 的 NAS 与期末项目在做。每个数字都能由 `python scripts/check_claims.py` 对照原始结果复核。
 
 数据中心一侧（GPU、FlashAttention、GPTQ / AWQ、KV cache、分布式训练）在姊妹仓库 [mlsys-infra](https://gitee.com/liu-xingyan04/mlsys-infra)。两边按同一套结构写（16 节笔记、claims、VERIFICATION、作品集），对应关系见 [BRIDGE.md](BRIDGE.md)。
 
@@ -85,7 +85,17 @@ python tools/edge_calc.py pipeline --tiles 8 --dma 2 --compute 2
 | q4-gemv | [代码](solutions/edge-runtime/q4-gemv/cpp/) · [测试](solutions/edge-runtime/q4-gemv/tests/) · [图](solutions/edge-runtime/q4-gemv/artifacts/figures/) · [说明](solutions/edge-runtime/q4-gemv/README.md) | 与 gguf 逐字节一致；Q4 × Q8 单线程 4.6 倍于 fp32；GPT-2 280 窗口 fp32 29.95 / Q8_0 29.95 / Q4_0 31.88 / Q4_1 32.15 |
 | llama-cpp-7b | [代码](solutions/edge-runtime/llama-cpp-7b/code/) · [测试](solutions/edge-runtime/llama-cpp-7b/tests/) · [图](solutions/edge-runtime/llama-cpp-7b/artifacts/figures/) · [说明](solutions/edge-runtime/llama-cpp-7b/README.md) | Qwen2.5-7B 11 种 GGUF：GPU 解码达带宽线 93%（F16）→ 64%（Q2_K），CPU 上 K-quant 只到 44–56%；AMX 重排 prefill 2.8 倍；Q4_K_M 的 KLD 是 Q4_0 的 0.55 倍；端到端比 q4-gemv 预测多 0.41–0.47 ms/token |
 
-依赖：`pip install -r requirements.txt`（CPU torch、onnxruntime、numpy）和 PATH 上的 g++。q4-gemv 的 Triton 部分另见 `requirements-gpu.txt`；llama-cpp-7b 还要一份编译好的 llama.cpp，测试只测解析器，不需要它。每个实验：
+官方作业（题面见 [assignments/](assignments/README.md)）：
+
+| 作业 | 代码、测试、图、说明 | 能引用的结果 |
+| --- | --- | --- |
+| 6.5940 Lab 1 剪枝 | [代码](solutions/mit6.5940/lab1-pruning/code/) · [测试](solutions/mit6.5940/lab1-pruning/tests/) · [图](solutions/mit6.5940/lab1-pruning/artifacts/figures/) · [说明](solutions/mit6.5940/lab1-pruning/README.md) | VGG 细粒度剪到 23.6% 尺寸，微调后 92.72%（稠密 92.95%）；通道剪 30%：MACs 0.504 倍、延迟 0.64 倍、92.52% |
+| 6.5940 Lab 2 量化 | [代码](solutions/mit6.5940/lab2-vgg/code/) · [测试](solutions/mit6.5940/lab2-vgg/tests/) · [图](solutions/mit6.5940/lab2-vgg/artifacts/figures/) · [说明](solutions/mit6.5940/lab2-vgg/README.md) | k-means 8 / 4 / 2 bit QAT 后 92.82 / 92.84 / 92.18%；整数 int8 VGG 92.94%，int4 PTQ 89.98% |
+| 6.5940 Lab 4 AWQ | [代码](solutions/mit6.5940/lab4-awq/code/) · [测试](solutions/mit6.5940/lab4-awq/tests/) · [图](solutions/mit6.5940/lab4-awq/artifacts/figures/) · [说明](solutions/mit6.5940/lab4-awq/README.md) | OPT-1.3B W3 g128：RTN 107.97，按激活保留 1% 16.69、按权重 103.41，AWQ 16.87、加截断 16.04（fp16 14.47） |
+| 6.5940 Lab 5 TinyChat | [代码](solutions/mit6.5940/lab5-tinychat/code/) · [测试](solutions/mit6.5940/lab5-tinychat/tests/) · [图](solutions/mit6.5940/lab5-tinychat/artifacts/figures/) · [说明](solutions/mit6.5940/lab5-tinychat/README.md) | W4A8 kernel 全部通过；all_techniques 28.2 倍于参考，LLaMA2-7B decode 12.5 倍；`-O3` 下 51.5 倍、191 ms/token |
+| MLC 作业 1 | [代码](solutions/mlc/e2e-relax/code/) · [测试](solutions/mlc/e2e-relax/tests/) · [图](solutions/mlc/e2e-relax/artifacts/figures/) · [说明](solutions/mlc/e2e-relax/README.md) | TVM 0.27 Relax 五种写法都是 83.88%；默认 2375 µs（linear0 占 2344）→ 手写调度 157 → MetaSchedule 44，PyTorch 505 |
+
+依赖：`pip install -r requirements.txt`（CPU torch、onnxruntime、numpy）和 PATH 上的 g++。q4-gemv 的 Triton 部分另见 `requirements-gpu.txt`；llama-cpp-7b 还要一份编译好的 llama.cpp，测试只测解析器，不需要它；e2e-relax 要单独一个装 TVM 0.27 的 venv，没有时它的 TVM 测试跳过。每个实验：
 
 ```bash
 cd solutions/<course>/<lab>
@@ -93,7 +103,7 @@ python -m pytest -q tests
 python scripts/run_experiments.py
 ```
 
-全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；11 套 140 个测试，`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接、报告与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)，每次检查的结果记在 [VERIFICATION.md](VERIFICATION.md)。
+全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；16 套 172 个测试，没装 TVM 时跳过 3 个；`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接、报告与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)，每次检查的结果记在 [VERIFICATION.md](VERIFICATION.md)。
 
 ## 报告与服务器实测
 
@@ -116,6 +126,8 @@ python scripts/run_experiments.py
 | [tinyengine-memory 激活规划](reports/tinyengine-memory/tinyengine_memory_report.pdf) | 15 | 按大小降序贪心在 11 个配置上正好等于存活下界；patch 推理把峰值降 3.75 倍，代价是整网 MACs 多 27% |
 | [runtime-compare 六条推理路径](reports/runtime-compare/runtime_compare_report.pdf) | 9 | 四条 fp32 导出链与 PyTorch 逐图同答；单线程 ORT int8 127 µs、LiteRT 166、ExecuTorch 192、ORT fp32 202、PyTorch eager 1173、不调优的 TVM 4107 |
 | [edge-runtime-server 服务器复测](reports/edge-runtime-server/edge_runtime_server_report.pdf) | 14 | 同一份代码在 Xeon 8470Q 和 RTX 6000D 上重跑，大部分指标只改常数，三条「经验法则」翻转 |
+| [mit6.5940-labs 官方 Lab 1、2、4、5](reports/mit6.5940-labs/mit65940_labs_report.pdf) | 8 | 显著性来自激活不来自权重（保留 1%：16.69 对 103.41）；TinyChat 的符号技巧依赖量化器保证激活不取 −128 |
+| [mlc-e2e-relax MLC 作业 1](reports/mlc-e2e-relax/mlc_e2e_relax_report.pdf) | 4 | 端到端瓶颈是 linear0 不是卷积；MetaSchedule 的数据库在融合前后对不上时静默退回默认调度 |
 
 同一份代码在两台主机上的 34 项指标对照在 [CROSS-HOST.md](interview/CROSS-HOST.md)：大部分指标快 1.3–2.7 倍，但 Winograd 在 56² 层、512 位向量、两线程双缓冲这三条结论在服务器上翻转。
 

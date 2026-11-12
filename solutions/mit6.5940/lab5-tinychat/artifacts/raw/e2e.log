@@ -1,0 +1,32 @@
+llama_vocab.bin
+opt_merges.txt
+opt_vocab.json
+82:        generation_config.n_predict = getenv("N_PREDICT") ? atoi(getenv("N_PREDICT")) : 512;
+95:                std::getline(std::cin, input); if (std::cin.eof() && input.empty()) return 0;
+109:                std::getline(std::cin, input); if (std::cin.eof() && input.empty()) return 0;
+134:        std::getline(std::cin, input); if (std::cin.eof() && input.empty()) return 0;
+=== IMP 5
+USER: ASSISTANT: 
+Section, Total time(ms), Average time(ms), Count, GOPs
+Inference latency, 35646.558594, 1149.889038, 31, N/A
+=== IMP 4
+USER: ASSISTANT: 
+Section, Total time(ms), Average time(ms), Count, GOPs
+Inference latency, 69815.710938, 2252.118896, 31, N/A
+=== IMP 3
+USER: ASSISTANT: 
+Section, Total time(ms), Average time(ms), Count, GOPs
+Inference latency, 175268.968750, 5653.837891, 31, N/A
+=== IMP 2
+USER: ASSISTANT: 
+Section, Total time(ms), Average time(ms), Count, GOPs
+Inference latency, 136917.156250, 4416.682129, 31, N/A
+=== IMP 1
+USER: ASSISTANT: 
+Section, Total time(ms), Average time(ms), Count, GOPs
+Inference latency, 216938.250000, 6998.007812, 31, N/A
+=== IMP 0
+USER: ASSISTANT: 
+Section, Total time(ms), Average time(ms), Count, GOPs
+Inference latency, 447238.437500, 14427.044922, 31, N/A
+e2e-done

@@ -2,7 +2,7 @@
 
 [mlsys-infra](https://gitee.com/liu-xingyan04/mlsys-infra) 回答数据中心上的「算得过来、放得下、传得过来」，本仓库回答同样三个问题在 CPU、MCU、NPU 上的版本。两个仓库共用一套实验约定，公式按同一套推导写，面试时可以从任一侧切到另一侧。逐道官方题的分工，包括哪些求解故意不在这边重做，写在 [assignments/README.md](assignments/README.md)。
 
-四处不要混。机器：这边的拐点是本机实测的 11.5 FLOP/byte，那边 H100 是 295。量化：求解（GPTQ、AWQ、SmoothQuant、Wanda）在那边，执行（定点 requant、gguf 块格式、llama.cpp）在这边。编译：这边的调度用自写搜索器在真机上搜，TVM 只在 runtime-compare 里作为六条推理路径之一、不调优地跑；那边讲融合和 GPU kernel。协议：GPT-2 困惑度两边相同，可以对表；Qwen2.5-7B 的绝对困惑度一个是 Hugging Face ctx 1024，一个是 llama-perplexity ctx 512，只比相对涨幅。
+四处不要混。机器：这边的拐点是本机实测的 11.5 FLOP/byte，那边 H100 是 295。量化：求解（GPTQ、AWQ、SmoothQuant、Wanda）在那边，执行（定点 requant、gguf 块格式、llama.cpp）在这边。编译：这边的调度用自写搜索器在真机上搜，TVM 在 runtime-compare 里不调优地跑、在 MLC 作业 1（e2e-relax）里用 Relax 与 MetaSchedule 调到底；那边讲融合和 GPU kernel。6.5940 的 Lab 1（剪枝）和 Lab 4（AWQ）这边按课程题面在 VGG 与 OPT-1.3B 上做，那边在 GPT-2 与 Qwen2.5-7B 上和 Wanda、GPTQ 对照。协议：GPT-2 困惑度两边相同，可以对表；Qwen2.5-7B 的绝对困惑度一个是 Hugging Face ctx 1024，一个是 llama-perplexity ctx 512，只比相对涨幅。
 
 ## 共用的约定
 
@@ -39,6 +39,8 @@
 | [llama-cpp-7b](solutions/edge-runtime/llama-cpp-7b/README.md) | [15-849 编译与压缩的 Qwen2.5-7B 一节](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/solutions/cmu15849/compiler-compression/README.md)、[15-849 服务与显存](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/solutions/cmu15849/serving-memory/README.md) | 同一个模型、同一张 RTX 6000D。那边 W4 g128 GPTQ 困惑度 +2.9%、AWQ +3.8%；这里 Q4_K_M + imatrix +1.2%（7.1016 → 7.1846）。两边协议不同（HF ctx 1024 对 llama-perplexity ctx 512），只比相对涨幅；imatrix 和 AWQ / GPTQ 一样按激活给误差加权 |
 | [tinyengine-memory](solutions/mit6.5940/tinyengine-memory/README.md) | [15-849 分布式训练](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/solutions/cmu15849/distributed-training/README.md) | 那边全量重计算 +18.9% 时间；这里 patch 推理 +7.7% 整网 MACs 换 2.66 倍峰值 |
 | [runtime-compare](solutions/edge-runtime/runtime-compare/README.md) | [15-849 编译与压缩](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/solutions/cmu15849/compiler-compression/README.md) | 两边都量“框架开销 vs 编译后执行”：那边 RTX 5090 上 MLP 的 eager 419.4 µs 对 max-autotune 356.8 µs；这里单线程 CPU 上 PyTorch eager 1173 µs 对 ORT 202 µs，不调优的 TVM 4107 µs。量化路径那边是 LLM 的权重量化，这里是 CNN 的 int8 QDQ（127 µs） |
+| [lab4-awq](solutions/mit6.5940/lab4-awq/README.md) | [15-849 编译与压缩](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/solutions/cmu15849/compiler-compression/README.md) | 同一个 AWQ 思路，这边 OPT-1.3B W3 / W4 g128（RTN 107.97 → AWQ 16.87，W4 14.78，fp16 14.47），那边 GPT-2 与 Qwen2.5-7B 的 W4 g128 涨幅；模型与协议都不同，只比「AWQ 相对 RTN 收回了多少」 |
+| [lab1-pruning](solutions/mit6.5940/lab1-pruning/README.md) | [15-849 编译与压缩](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/solutions/cmu15849/compiler-compression/README.md) | 这边 VGG 细粒度剪枝在稠密 kernel 上不变快（9.25 → 9.18 ms），那边 2:4 cuSPARSELt 在大 GEMM 上 1.54–1.58 倍：稀疏要有硬件格式才省时间 |
 | [dma-double-buffer](solutions/edge-runtime/dma-double-buffer/README.md) | [15-849 分布式训练](https://gitee.com/liu-xingyan04/mlsys-infra/blob/main/solutions/cmu15849/distributed-training/README.md) | 1F1B 气泡与双缓冲的填充-排空项用同一个事件模拟器思路验证 |
 
 ## 面试时怎么切换

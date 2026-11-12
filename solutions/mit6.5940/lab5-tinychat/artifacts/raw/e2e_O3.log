@@ -1,0 +1,5 @@
+=== IMP 5
+Inference latency, 5926.178223, 191.167007, 31, N/A
+=== IMP 0
+Inference latency, 95634.101562, 3084.970215, 31, N/A
+e2e-done

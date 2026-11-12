@@ -1,0 +1,18 @@
+-------- Sanity check of reference implementation: Passed! -------- 
+Section, Total time(ms), Average time(ms), Count, GOPs
+reference, 2834.343018, 283.433990, 10, 0.924885
+-------- Sanity check of loop_unrolling implementation: Passed! -------- 
+Section, Total time(ms), Average time(ms), Count, GOPs
+loop_unrolling, 1405.567017, 140.556000, 10, 1.865041
+-------- Sanity check of multithreading implementation: Passed! -------- 
+Section, Total time(ms), Average time(ms), Count, GOPs
+multithreading, 785.468994, 78.545998, 10, 3.337420
+-------- Sanity check of simd_programming implementation: Passed! -------- 
+Section, Total time(ms), Average time(ms), Count, GOPs
+simd_programming, 1034.567993, 103.456001, 10, 2.533850
+-------- Sanity check of multithreading_loop_unrolling implementation: Passed! -------- 
+Section, Total time(ms), Average time(ms), Count, GOPs
+multithreading_loop_unrolling, 386.911987, 38.691002, 10, 6.775288
+-------- Sanity check of all_techniques implementation: Passed! -------- 
+Section, Total time(ms), Average time(ms), Count, GOPs
+all_techniques, 100.496002, 10.049000, 10, 26.085018

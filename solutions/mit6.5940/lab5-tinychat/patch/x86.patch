@@ -1,0 +1,255 @@
+diff --git a/kernels/starter_code/all_techniques.cc b/kernels/starter_code/all_techniques.cc
+index c902e7e..f8a1143 100644
+--- a/kernels/starter_code/all_techniques.cc
++++ b/kernels/starter_code/all_techniques.cc
+@@ -66,10 +66,26 @@ static void *all_techniques_worker_func(void *args) {
+                 // (3) use `vreinterpretq_s8_u8` to interpret the  vector as int8
+                 // lowbit mask
+                 const uint8x16_t mask_low4bit = vdupq_n_u8(0xf);
++                int8x16_t w0_lo = vreinterpretq_s8_u8(vandq_u8(w0, mask_low4bit));
++                int8x16_t w0_hi = vreinterpretq_s8_u8(vshrq_n_u8(w0, 4));
++                int8x16_t w1_lo = vreinterpretq_s8_u8(vandq_u8(w1, mask_low4bit));
++                int8x16_t w1_hi = vreinterpretq_s8_u8(vshrq_n_u8(w1, 4));
++                int8x16_t w2_lo = vreinterpretq_s8_u8(vandq_u8(w2, mask_low4bit));
++                int8x16_t w2_hi = vreinterpretq_s8_u8(vshrq_n_u8(w2, 4));
++                int8x16_t w3_lo = vreinterpretq_s8_u8(vandq_u8(w3, mask_low4bit));
++                int8x16_t w3_hi = vreinterpretq_s8_u8(vshrq_n_u8(w3, 4));
+ 
+                 // TODO: apply zero_point to weights and convert the range from (0, 15) to (-8, 7)
+                 // Hint: using `vsubq_s8` to the lower-half and upper-half vectors of weights
+                 const int8x16_t offsets = vdupq_n_s8(8);
++                w0_lo = vsubq_s8(w0_lo, offsets);
++                w0_hi = vsubq_s8(w0_hi, offsets);
++                w1_lo = vsubq_s8(w1_lo, offsets);
++                w1_hi = vsubq_s8(w1_hi, offsets);
++                w2_lo = vsubq_s8(w2_lo, offsets);
++                w2_hi = vsubq_s8(w2_hi, offsets);
++                w3_lo = vsubq_s8(w3_lo, offsets);
++                w3_hi = vsubq_s8(w3_hi, offsets);
+ 
+                 // load 128 8-bit activation
+                 const int8x16_t a0 = vld1q_s8(a_start);
+@@ -85,6 +101,11 @@ static void *all_techniques_worker_func(void *args) {
+                 // TODO: perform dot product and store the result into the intermediate sum, int_sum0
+                 // Hint: use `vdotq_s32` and store the sum for each block in int_sum{0-3}
+                 int32x4_t int_sum0, int_sum1, int_sum2, int_sum3;
++                const int32x4_t zero = vdupq_n_s32(0);
++                int_sum0 = vdotq_s32(vdotq_s32(zero, a0, w0_lo), a1, w0_hi);
++                int_sum1 = vdotq_s32(vdotq_s32(zero, a2, w1_lo), a3, w1_hi);
++                int_sum2 = vdotq_s32(vdotq_s32(zero, a4, w2_lo), a5, w2_hi);
++                int_sum3 = vdotq_s32(vdotq_s32(zero, a6, w3_lo), a7, w3_hi);
+ 
+                 float s_0 = *s_a++ * *s_w++;
+                 float s_1 = *s_a++ * *s_w++;
+@@ -133,6 +154,10 @@ static void *all_techniques_worker_func(void *args) {
+                 // `w_0_next` and `w_128_next`, respectively
+                 const __m256i zero_point = _mm256_set1_epi8(8);
+                 __m256i w_0, w_128, w_0_next, w_128_next;
++                w_0 = _mm256_sub_epi8(_mm256_and_si256(raw_w, lowMask), zero_point);
++                w_128 = _mm256_sub_epi8(_mm256_and_si256(_mm256_srli_epi16(raw_w, 4), lowMask), zero_point);
++                w_0_next = _mm256_sub_epi8(_mm256_and_si256(raw_w_next, lowMask), zero_point);
++                w_128_next = _mm256_sub_epi8(_mm256_and_si256(_mm256_srli_epi16(raw_w_next, 4), lowMask), zero_point);
+ 
+                 // Perform int8 dot product with _mm256_maddubs_epi16
+                 /* Syntax of _mm256_maddubs_epi16:
+@@ -169,6 +194,10 @@ static void *all_techniques_worker_func(void *args) {
+                 // dot2 = ax2 * sy2
+                 // dot3 = ax_next * sy_next
+                 // dot4 = ax2_next * sy2_next
++                dot = _mm256_maddubs_epi16(ax, sy);
++                dot2 = _mm256_maddubs_epi16(ax2, sy2);
++                dot3 = _mm256_maddubs_epi16(ax_next, sy_next);
++                dot4 = _mm256_maddubs_epi16(ax2_next, sy2_next);
+ 
+                 // Convert int32 vectors to floating point vectors
+                 const __m256i ones = _mm256_set1_epi16(1);
+@@ -222,7 +251,14 @@ void MatmulOperator::mat_mul_all_techniques(struct matmul_params *params) {
+     assert(params->block_size == 32);  // support block size 32 for now
+ 
+     // TODO: Thread creation
+-
++    const int n = C->column;
++    for (int j = 0; j < num_thread; j++) {
++        threads_args[j].start_j = j * (n / num_thread);
++        threads_args[j].end_j = (j == num_thread - 1) ? n : (j + 1) * (n / num_thread);
++        threads_args[j].params = params;
++        pthread_create(&thread_pool[j], NULL, all_techniques_worker_func, &threads_args[j]);
++    }
+     // TODO: Join threads
++    for (int j = 0; j < num_thread; j++) pthread_join(thread_pool[j], NULL);
+ };
+ }  // namespace matmul
+diff --git a/kernels/starter_code/loop_unrolling.cc b/kernels/starter_code/loop_unrolling.cc
+index f64a536..0bfcd83 100644
+--- a/kernels/starter_code/loop_unrolling.cc
++++ b/kernels/starter_code/loop_unrolling.cc
+@@ -55,8 +55,17 @@ void MatmulOperator::mat_mul_loop_unrolling(struct matmul_params *params) {
+                 int intermediate_sum0 = 0, intermediate_sum1 = 0, intermediate_sum2 = 0, intermediate_sum3 = 0;
+                 for (int qj = 0; qj < 16; qj++) {
+                     // TODO: decode a packed byte into two int8 in the range of (-8, 7)
+-
++                    uint8_t p0 = w0_int4[qj], p1 = w1_int4[qj], p2 = w2_int4[qj], p3 = w3_int4[qj];
++                    signed char w0_lo = (p0 & 0x0F) - 8, w0_hi = (p0 >> 4) - 8;
++                    signed char w1_lo = (p1 & 0x0F) - 8, w1_hi = (p1 >> 4) - 8;
++                    signed char w2_lo = (p2 & 0x0F) - 8, w2_hi = (p2 >> 4) - 8;
++                    signed char w3_lo = (p3 & 0x0F) - 8, w3_hi = (p3 >> 4) - 8;
+                     // TODO: int8 multiply and accumulate operation
++                    signed char a_lo = a_int8[qj], a_hi = a_int8[qj + 16];
++                    intermediate_sum0 += a_lo * w0_lo + a_hi * w0_hi;
++                    intermediate_sum1 += a_lo * w1_lo + a_hi * w1_hi;
++                    intermediate_sum2 += a_lo * w2_lo + a_hi * w2_hi;
++                    intermediate_sum3 += a_lo * w3_lo + a_hi * w3_hi;
+                 }
+                 // dequantize the sum into floating point
+                 acc0 += (float)intermediate_sum0 * s_a * s_w0;
+@@ -88,8 +97,21 @@ void MatmulOperator::mat_mul_loop_unrolling(struct matmul_params *params) {
+                     intermediate_sum3_2nd = 0;
+                 for (int qj = 0; qj < 32; qj++) {
+                     // TODO: decode a packed byte into two int8 in the range of (-8, 7)
+-
++                    uint8_t p0 = w0_int4[qj], p1 = w1_int4[qj], p2 = w2_int4[qj], p3 = w3_int4[qj];
++                    signed char w0_lo = (p0 & 0x0F) - 8, w0_hi = (p0 >> 4) - 8;
++                    signed char w1_lo = (p1 & 0x0F) - 8, w1_hi = (p1 >> 4) - 8;
++                    signed char w2_lo = (p2 & 0x0F) - 8, w2_hi = (p2 >> 4) - 8;
++                    signed char w3_lo = (p3 & 0x0F) - 8, w3_hi = (p3 >> 4) - 8;
+                     // TODO: int8 multiply and accumulate operation
++                    signed char a_lo = a_int8[qj], a_hi = a_int8[qj + 32];
++                    intermediate_sum0 += a_lo * w0_lo;
++                    intermediate_sum0_2nd += a_hi * w0_hi;
++                    intermediate_sum1 += a_lo * w1_lo;
++                    intermediate_sum1_2nd += a_hi * w1_hi;
++                    intermediate_sum2 += a_lo * w2_lo;
++                    intermediate_sum2_2nd += a_hi * w2_hi;
++                    intermediate_sum3 += a_lo * w3_lo;
++                    intermediate_sum3_2nd += a_hi * w3_hi;
+                 }
+                 // dequantize the sum into floating point
+                 acc0 += (float)intermediate_sum0 * s_a * s_w0;
+diff --git a/kernels/starter_code/multithreading.cc b/kernels/starter_code/multithreading.cc
+index ffc540a..a7d5b08 100644
+--- a/kernels/starter_code/multithreading.cc
++++ b/kernels/starter_code/multithreading.cc
+@@ -110,7 +110,13 @@ void MatmulOperator::mat_mul_multithreading(struct matmul_params* params) {
+     struct multithreading_thread_args threads_args[num_thread];
+ 
+     // TODO: Thread creation
+-
++    for (int j = 0; j < num_thread; j++) {
++        threads_args[j].start = j * (n / num_thread);
++        threads_args[j].end = (j == num_thread - 1) ? n : (j + 1) * (n / num_thread);
++        threads_args[j].params = params;
++        pthread_create(&thread_pool[j], NULL, multithreading_worker_func, &threads_args[j]);
++    }
+     // TODO: Join threads
++    for (int j = 0; j < num_thread; j++) pthread_join(thread_pool[j], NULL);
+ };
+ }  // namespace matmul
+diff --git a/kernels/starter_code/multithreading_loop_unrolling.cc b/kernels/starter_code/multithreading_loop_unrolling.cc
+index 4a3b014..85c56e9 100644
+--- a/kernels/starter_code/multithreading_loop_unrolling.cc
++++ b/kernels/starter_code/multithreading_loop_unrolling.cc
+@@ -57,8 +57,17 @@ static void *multithreading_loop_unrolling_worker_func(void *args) {
+                 int intermediate_sum0 = 0, intermediate_sum1 = 0, intermediate_sum2 = 0, intermediate_sum3 = 0;
+                 for (int qj = 0; qj < 16; qj++) {
+                     // TODO: decode a packed byte into two int8 in the range of (-8, 7)
+-
++                    uint8_t p0 = w0_int4[qj], p1 = w1_int4[qj], p2 = w2_int4[qj], p3 = w3_int4[qj];
++                    signed char w0_lo = (p0 & 0x0F) - 8, w0_hi = (p0 >> 4) - 8;
++                    signed char w1_lo = (p1 & 0x0F) - 8, w1_hi = (p1 >> 4) - 8;
++                    signed char w2_lo = (p2 & 0x0F) - 8, w2_hi = (p2 >> 4) - 8;
++                    signed char w3_lo = (p3 & 0x0F) - 8, w3_hi = (p3 >> 4) - 8;
+                     // TODO: int8 multiply and accumulate operation
++                    signed char a_lo = a_int8[qj], a_hi = a_int8[qj + 16];
++                    intermediate_sum0 += a_lo * w0_lo + a_hi * w0_hi;
++                    intermediate_sum1 += a_lo * w1_lo + a_hi * w1_hi;
++                    intermediate_sum2 += a_lo * w2_lo + a_hi * w2_hi;
++                    intermediate_sum3 += a_lo * w3_lo + a_hi * w3_hi;
+                 }
+                 // dequantize the sum into floating point
+                 acc0 += (float)intermediate_sum0 * s_a * s_w0;
+@@ -90,8 +99,21 @@ static void *multithreading_loop_unrolling_worker_func(void *args) {
+                     intermediate_sum3_2nd = 0;
+                 for (int qj = 0; qj < 32; qj++) {
+                     // TODO: decode a packed byte into two int8 in the range of (-8, 7)
+-
++                    uint8_t p0 = w0_int4[qj], p1 = w1_int4[qj], p2 = w2_int4[qj], p3 = w3_int4[qj];
++                    signed char w0_lo = (p0 & 0x0F) - 8, w0_hi = (p0 >> 4) - 8;
++                    signed char w1_lo = (p1 & 0x0F) - 8, w1_hi = (p1 >> 4) - 8;
++                    signed char w2_lo = (p2 & 0x0F) - 8, w2_hi = (p2 >> 4) - 8;
++                    signed char w3_lo = (p3 & 0x0F) - 8, w3_hi = (p3 >> 4) - 8;
+                     // TODO: int8 multiply and accumulate operation
++                    signed char a_lo = a_int8[qj], a_hi = a_int8[qj + 32];
++                    intermediate_sum0 += a_lo * w0_lo;
++                    intermediate_sum0_2nd += a_hi * w0_hi;
++                    intermediate_sum1 += a_lo * w1_lo;
++                    intermediate_sum1_2nd += a_hi * w1_hi;
++                    intermediate_sum2 += a_lo * w2_lo;
++                    intermediate_sum2_2nd += a_hi * w2_hi;
++                    intermediate_sum3 += a_lo * w3_lo;
++                    intermediate_sum3_2nd += a_hi * w3_hi;
+                 }
+                 // dequantize the sum into floating point
+                 acc0 += (float)intermediate_sum0 * s_a * s_w0;
+@@ -131,7 +153,15 @@ void MatmulOperator::mat_mul_multithreading_loop_unrolling(struct matmul_params
+     assert(params->block_size == 32);  // support block size 32 for now
+ 
+     // TODO: Thread creation
+-
++    // Each worker steps `col` by 4, so every chunk boundary is a multiple of 4.
++    const int chunk = (n / num_thread) / 4 * 4;
++    for (int j = 0; j < num_thread; j++) {
++        threads_args[j].start = j * chunk;
++        threads_args[j].end = (j == num_thread - 1) ? n : (j + 1) * chunk;
++        threads_args[j].params = params;
++        pthread_create(&thread_pool[j], NULL, multithreading_loop_unrolling_worker_func, &threads_args[j]);
++    }
+     // TODO: Join threads
++    for (int j = 0; j < num_thread; j++) pthread_join(thread_pool[j], NULL);
+ };
+ }  // namespace matmul
+diff --git a/kernels/starter_code/simd_programming.cc b/kernels/starter_code/simd_programming.cc
+index a65c48a..9376b79 100644
+--- a/kernels/starter_code/simd_programming.cc
++++ b/kernels/starter_code/simd_programming.cc
+@@ -63,10 +63,14 @@ void MatmulOperator::mat_mul_simd_programming(struct matmul_params *params) {
+                 // (3) use `vreinterpretq_s8_u8` to interpret the  vector as int8
+                 // lowbit mask
+                 const uint8x16_t mask_low4bit = vdupq_n_u8(0xf);
++                int8x16_t w_lo = vreinterpretq_s8_u8(vandq_u8(w0, mask_low4bit));
++                int8x16_t w_hi = vreinterpretq_s8_u8(vshrq_n_u8(w0, 4));
+ 
+                 // TODO: apply zero_point to weights and convert the range from (0, 15) to (-8, 7)
+                 // Hint: using `vsubq_s8` to the lower-half and upper-half vectors of weights
+                 const int8x16_t offsets = vdupq_n_s8(8);
++                w_lo = vsubq_s8(w_lo, offsets);
++                w_hi = vsubq_s8(w_hi, offsets);
+ 
+                 // load 32 8-bit activation
+                 const int8x16_t a0 = vld1q_s8(a_start);
+@@ -76,7 +80,7 @@ void MatmulOperator::mat_mul_simd_programming(struct matmul_params *params) {
+                 // TODO: perform dot product and store the result into the intermediate sum, int_sum0
+                 // Hint: use `vdotq_s32` to compute sumv0 = a0 * lower-half weights + a1 * upper-half weights
+                 // int32x4 vector to store intermediate sum
+-                int32x4_t int_sum0;
++                int32x4_t int_sum0 = vdotq_s32(vdotq_s32(vdupq_n_s32(0), a0, w_lo), a1, w_hi);
+ 
+                 float s_0 = *s_a++ * *s_w++;
+                 sumv0 = vmlaq_n_f32(sumv0, vcvtq_f32_s32(int_sum0), s_0);
+@@ -124,6 +128,8 @@ void MatmulOperator::mat_mul_simd_programming(struct matmul_params *params) {
+                 // Note: Store the lower half and upper half of weights into `w_0` and `w_128`, respectively
+                 const __m256i zero_point = _mm256_set1_epi8(8);
+                 __m256i w_0, w_128;
++                w_0 = _mm256_sub_epi8(_mm256_and_si256(raw_w, lowMask), zero_point);
++                w_128 = _mm256_sub_epi8(_mm256_and_si256(_mm256_srli_epi16(raw_w, 4), lowMask), zero_point);
+ 
+                 // Perform int8 dot product with _mm256_maddubs_epi16
+                 /* Syntax of _mm256_maddubs_epi16:
+@@ -152,6 +158,8 @@ void MatmulOperator::mat_mul_simd_programming(struct matmul_params *params) {
+                 // Hint: use `_mm256_maddubs_epi16` to complete the following computation
+                 // dot = ax * sy
+                 // dot2 = ax2 * sy2
++                dot = _mm256_maddubs_epi16(ax, sy);
++                dot2 = _mm256_maddubs_epi16(ax2, sy2);
+ 
+                 // Convert int32 vectors to floating point vectors
+                 const __m256i ones = _mm256_set1_epi16(1);

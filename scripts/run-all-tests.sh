@@ -14,9 +14,14 @@ SUITES=(
   "edge-runtime q4-gemv|solutions/edge-runtime/q4-gemv/tests"
   "edge-runtime llama-cpp-7b|solutions/edge-runtime/llama-cpp-7b/tests"
   "edge-runtime runtime-compare|solutions/edge-runtime/runtime-compare/tests"
+  "mit6.5940 lab1-pruning|solutions/mit6.5940/lab1-pruning/tests"
   "mit6.5940 lab2-quantization|solutions/mit6.5940/lab2-quantization/tests"
+  "mit6.5940 lab2-vgg|solutions/mit6.5940/lab2-vgg/tests"
+  "mit6.5940 lab4-awq|solutions/mit6.5940/lab4-awq/tests"
+  "mit6.5940 lab5-tinychat|solutions/mit6.5940/lab5-tinychat/tests"
   "mit6.5940 tinyengine-memory|solutions/mit6.5940/tinyengine-memory/tests"
   "mlc tensor-program-tuning|solutions/mlc/tensor-program-tuning/tests"
+  "mlc e2e-relax|solutions/mlc/e2e-relax/tests"
 )
 TMP=$(mktemp -d)
 JOBS=$(nproc)

@@ -9,10 +9,10 @@
 | 检查什么 | 命令 | 结果 |
 | --- | --- | --- |
 | 笔记的结构（16 节、元数据、公式块、追问链）、到 mlsys-infra 笔记的链接、索引、术语 | `python notes/check_notes.py` | 8 讲全部通过 |
-| 全部测试，AVX-512 + VNNI | `./scripts/run-all-tests.ps1` | 11 套全部通过，140 个测试 |
-| 全部测试，无 AVX-512 的回退路径 | `$env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1` | 上一轮 10 套 135 个。runtime-compare 是纯 Python，本轮没有重跑这条 |
-| README、笔记、报告里的关键数字与原始数据一致 | `python scripts/check_claims.py`（对照 `claims.json`） | 123 条全部吻合 |
-| Markdown 相对链接、实验目录结构、报告（PDF 存在、图能找到、每条参考文献都被引用且没有未定义的引用）、claims、密钥扫描 | `./scripts/check-repo.ps1`（报告部分由 `scripts/check_reports.py` 完成） | 通过，10 个实验，11 份报告 |
+| 全部测试，AVX-512 + VNNI | `./scripts/run-all-tests.ps1` | 16 套全部通过，本地 169 个 + 1 个跳过（没装 TVM 时 `e2e-relax/tests/test_relax.py` 整个跳过；服务器的 TVM 0.27 venv 上这 3 个也通过） |
+| 全部测试，无 AVX-512 的回退路径 | `$env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1` | 上一轮 10 套 135 个。之后新增的 6 套是纯 Python，本轮没有重跑这条 |
+| README、笔记、报告里的关键数字与原始数据一致 | `python scripts/check_claims.py`（对照 `claims.json`） | 158 条全部吻合 |
+| Markdown 相对链接、实验目录结构、报告（PDF 存在、图能找到、每条参考文献都被引用且没有未定义的引用）、claims、密钥扫描 | `./scripts/check-repo.ps1`（报告部分由 `scripts/check_reports.py` 完成） | 通过，15 个实验，13 份报告 |
 | 代码风格 | `python -m ruff check .` | 通过 |
 | CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml)：Ubuntu + Python 3.12，CPU torch，ruff + `check-repo.ps1` + `run-all-tests.sh`；没有 mlsys-infra 同级目录时跳过跨仓库笔记名校验 | 配置就绪。Gitee 不原生运行 GitHub Actions，镜像到 GitHub 后生效 |
 
@@ -30,6 +30,13 @@
 | lab2-quantization | 16 | BN 折叠前后输出一致；逐张量把小通道量化成 0；校准器在重尾分布上的行为；零尖峰把 KL 阈值拉低；STE 梯度在裁剪区外为 0；16 bit 伪量化接近浮点 |
 | tinyengine-memory | 9 | 规划结果互不重叠且不低于下界；first-fit 碎片而贪心不碎；trace 融合 BN / ReLU 并保持残差输入存活；原地 depthwise 降低峰值；halo 回推 |
 | tensor-program-tuning | 16 | 编译出的调度与参考 GEMM 一致；分块必须整除；策略不超预算、空间比种群小时能终止；岭回归恢复线性函数 |
+| lab1-pruning | 10 | 细粒度剪枝保留幅度最大的权重、边界稀疏度；更新后重新乘掩码；按「第一次跌破容许线」选稀疏度并满足尺寸预算；通道剪枝的形状与 MACs；排序不改变函数 |
+| lab2-vgg | 6 | 一维 k-means 恢复分离良好的簇；量化后每层至多 \(2^b\) 个值、QAT 一步后仍是；scale / zero point 映射区间端点；输入量化符合课程约定；BN 融合前后输出一致、整数 VGG 与浮点 argmax 一致 |
+| lab4-awq | 4 | 伪量化的级数与误差界；显著列逐位恢复；\(\alpha = 0\) 的缩放搜索等于 RTN；截断不放大误差 |
+| lab5-tinychat | 6 | `QM_x86` 打包往返与半字节顺序；`maddubs` 符号技巧在 [−127, 127] 上对全部 16 × 255 个组合精确，−128 的反例只出现在负权重上；块点积与 GEMV 对整数参考；patch 只动五个 starter 文件 |
+| e2e-relax | 3 + 3 | NumPy 卷积与前向对 PyTorch；四个 Relax 模块对 NumPy；`fuse` 的键空间约束（融合一次没有 `op_pattern`，两次有）；调度原语都在 |
+
+Lab 5 的 kernel 正确性另由官方 `evaluate.sh` 检查（`-O0` 与 `-O3` 各一遍，六个实现全部 Passed），日志在 `lab5-tinychat/artifacts/raw/`。
 
 q4-gemv 的 Triton 内核不在 pytest 里：`python gpu/bench_gpu.py check` 在 RTX 6000D 上对照 fp32 参考（Q8_0 / Q4_0 GEMV 相对误差 < 2e-3，Q4_0 Tensor Core GEMM < 5e-3），通过后才计时。
 
@@ -47,11 +54,14 @@ q4-gemv 的 Triton 内核不在 pytest 里：`python gpu/bench_gpu.py check` 在
 - **MCU、NPU、Pi 5、Orin** 的数字全部来自 `edge_harness/devices.py` 的数据手册参数或模型（事件模拟、Dory 式分块、带宽上界），不是实测。
 - **7B 模型**：q4-gemv 的 token/s 是只算 196 个 Linear 的预测；完整模型的端到端数字来自 llama-cpp-7b（llama.cpp `149f564`），两者的差在该实验 README 里拆过。
 - **精度结论**：lab2 的单次表格来自 CPU 训练的 seed 0；结论是否成立看五个种子的配对差与 95% 置信区间（t 分布，n = 5）。
+- **6.5940 官方作业**：Lab 1、2 的 VGG 训练与评测在 RTX 6000D 上，单种子；Lab 1 的延迟在 Xeon 8470Q 与本地 Ice Lake 各量一次。Lab 4 是伪量化，困惑度只反映精度。Lab 5 的 kernel 基准与端到端分别用 `taskset` 限 8 核与 6 核，课程 Makefile 的 `-O0`。
+- **MLC 作业 1**：TVM 0.27 在 Xeon 8470Q 上 `taskset` 8 核、`TVM_BIND_THREADS=0`；PyTorch 对照是 1 线程 eager。
 
 ## 已知缺口
 
 - 没有开发板：没有在 MCU、NPU、Pi 上跑过任何一个实验。
-- [runtime-compare](solutions/edge-runtime/runtime-compare/README.md) 在 x86 服务器 CPU 上对照了 ORT、LiteRT、ExecuTorch、TVM；TFLite Micro 和 MetaSchedule 调优过的 TVM 没有跑。本仓库的搜索器、规划器、块格式是最小实现，与官方实现对齐的部分（gguf 逐字节、ORT 逐位）在各 README 写明。
+- [runtime-compare](solutions/edge-runtime/runtime-compare/README.md) 在 x86 服务器 CPU 上对照了 ORT、LiteRT、ExecuTorch、TVM；TFLite Micro 没有跑，那张 micronet 的 MetaSchedule 也没有调完（8 核上的 MetaSchedule 在 [e2e-relax](solutions/mlc/e2e-relax/README.md) 跑通）。
+- MIT 6.5940 Lab 3（NAS）与期末项目还在做，依赖课程分发的 `mcunetv2-dev` 代码与 VWW 数据。本仓库的搜索器、规划器、块格式是最小实现，与官方实现对齐的部分（gguf 逐字节、ORT 逐位）在各 README 写明。
 - runtime-compare 的时间是 0.5 核 cgroup 下的 CPU 时间：同一批内部的排序可靠，跨批的绝对值能差一半。
 - 官方 starter code 未镜像，见 [UPSTREAM.md](UPSTREAM.md)。
 - llama.cpp 端到端比 q4-gemv 预测多出的 0.41–0.47 ms/token 没有用 nsys 拆到具体算子；llama-perplexity 的 ctx 512 协议与 mlsys-infra 的 HF 协议不同，两边困惑度不能直接比。

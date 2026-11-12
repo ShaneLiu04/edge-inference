@@ -16,3 +16,5 @@ gguf>=0.10
 safetensors>=0.4
 transformers>=4.45
 pyarrow>=15
+# lab4-awq streams the pile-val shard; mlc/e2e-relax needs apache-tvm 0.27 in its own venv (see its README).
+zstandard>=0.22
