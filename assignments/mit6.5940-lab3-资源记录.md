@@ -2,7 +2,7 @@
 
 记录日期：2026-11-12。用来后续整理：哪些资源有公开链接、各自试过什么、结果如何。Lab 3 本身还没做，所以这里不含实验结果。
 
-## 1. 课程分发的两个压缩包（必需，未拿到）
+## 1. 课程分发的两个压缩包（已镜像到本仓库）
 
 | 文件 | 内容 | 大小（公开笔记记录） | 链接 |
 | --- | --- | --- | --- |
@@ -11,11 +11,18 @@
 
 链接来源：TinyML KOR 的 Lab 3 笔记（https://tinyml-kor.github.io/blog/posts/labs/lab03.html）与 quidproquo 的 Lab 3 长文（https://quidproquo.cc/posts/ai/2026-09-30-mit-65940-lab3-nas-en/，写于 2026-10-01 时两个链接仍可用）。
 
+2026-11-19 直连 Dropbox 下载成功，两个包已镜像到本仓库 `assignments/lab3-resources/`。Gitee 社区版仓库不支持 Git LFS、单文件上限 100 MB，所以 `data.zip` 按 90 MiB 切成 4 个 `.part` 文件（`part00`–`part02` 各 94,371,840 B，`part03` 92,844,928 B），克隆后合并即可还原。校验值（SHA256）：
+
+| 文件 | 大小 | SHA256 |
+| --- | ---: | --- |
+| `mcunetv2-dev-main.zip` | 31,675,052 B | `8946f8093a9073f513a58b36a108209b3d49e0b391e71a73506bd1de897463ec` |
+| `data.zip` | 375,960,448 B | `623782584192360042be870381a4ab5a161c4b96a8005e1af8f75eae6507d5dc` |
+
+解压方法：`tar -xf assignments/lab3-resources/mcunetv2-dev-main.zip`（得到 `mcunetv2-dev-main/lab3.ipynb`、`vww_supernet.pth`、`acc_datasets/`）。`data.zip` 先合并再解压：Linux/macOS 用 `cat assignments/lab3-resources/data.zip.part* > data.zip`，Windows 用 `cmd /c copy /b assignments\lab3-resources\data.zip.part00+data.zip.part01+data.zip.part02+data.zip.part03 data.zip`；然后 `tar -xf data.zip` 得到 `data/vww-s256/val`。
+
 下载结果：
-- 本机通过公司代理：Dropbox 返回 403（`CONNECT tunnel failed`）。
-- 本机直连（不走代理）：连接超时（curl 退出码 28）。
-- AutoDL 服务器：连不上 Dropbox。
-- 两个文件都没有拿到。
+- 2026-11-12 本机通过公司代理：Dropbox 返回 403（`CONNECT tunnel failed`）；本机直连：连接超时（curl 退出码 28）；AutoDL 服务器：连不上 Dropbox。
+- 2026-11-19 本机直连 Dropbox 下载成功，内容核对无误后提交到本仓库。
 
 ## 2. 官方 MCUNet 仓库（已下载，但不含超网）
 
@@ -42,7 +49,7 @@ quidproquo 的长文指出：随机搜索单元里约束字典用的键是 `mill
 
 ## 5. 后续要做的事
 
-1. 在能打开 Dropbox 的网络上下载上面两个 zip，放到 `D:\STUDY\_dl`（或直接上传到服务器 `/root/autodl-tmp/dl/`）。
-2. 解压后确认有 `ofa_mcunets.py`、`vww_supernet.pth`、`acc_datasets` 和 `data/vww-s256/val`。
+1. ~~下载上面两个 zip~~ 已完成并随仓库同步：包在 `assignments/lab3-resources/`（`data.zip` 拆成 4 个分段，先合并再解压）。
+2. 解压后确认有 `ofa_mcunets.py`、`vww_supernet.pth`、`acc_datasets` 和 `data/vww-s256/val`（本机已确认）。
 3. 开服务器，装 `thop`、`onnx`，跑 Q1 到 Q10。
 4. 期末项目（子网 → int8 → 内存规划与 patch → MLPerf Tiny 四列）接在 Lab 3 之后。

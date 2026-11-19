@@ -9,3 +9,4 @@
 *.npz binary
 *.onnx binary
 *.pt binary
+assignments/lab3-resources/data.zip.part* binary
