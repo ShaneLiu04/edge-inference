@@ -26,7 +26,7 @@
 
 ## 实验：服务器复测与 7B（2026-11-04，AutoDL 上的 2 × Xeon 8470Q + RTX 6000D）
 
-跑完已归档、关机。汇总见 [README 的报告表](README.md#报告与服务器实测)。
+跑完已归档、关机。汇总见 [README 的实验报告](README.md#实验报告)。
 
 - [x] 6 个 edge-runtime 实验原样搬到 Xeon 8470Q 重跑（绑 NUMA1 的 16 个物理核，1–16 线程），原始数据在各实验的 `artifacts/raw/xeon8470q/`；34 项指标对照在 [CROSS-HOST.md](interview/CROSS-HOST.md) — [报告](reports/edge-runtime-server/edge_runtime_server_report.pdf)
 - [x] int8-kernels 新增 AMX tile GEMM：512³ 上是 VNNI 打包的 3.0 倍，K = 24 时只有 0.6 倍 — [README](solutions/edge-runtime/int8-kernels/README.md)

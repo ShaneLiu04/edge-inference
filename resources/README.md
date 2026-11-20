@@ -39,5 +39,5 @@
 
 | 仓库 | 关系 |
 | --- | --- |
-| [mlsys-infra](../../mlsys-infra/README.md) | GPU 系统、压缩算法、KV 与推测解码 |
-| [physical-ai](../../physical-ai/notes/edge-deployment.md) | 动作块相对控制周期的同步和异步 |
+| [mlsys-infra](https://gitee.com/liu-xingyan04/mlsys-infra) | GPU 系统、压缩算法、KV 与推测解码 |
+| physical-ai | 动作块相对控制周期的同步和异步（本地姊妹仓库，未随本仓库发布） |
