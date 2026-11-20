@@ -1,6 +1,6 @@
 # MIT 6.5940 Lab 3（NAS）资源记录
 
-记录日期：2026-11-12。用来后续整理：哪些资源有公开链接、各自试过什么、结果如何。Lab 3 本身还没做，所以这里不含实验结果。
+记录日期：2026-11-12。用来后续整理：哪些资源有公开链接、各自试过什么、结果如何。实验结果不写在这里，见 [lab3-nas](../solutions/mit6.5940/lab3-nas/README.md) 与 [project-mcu-e2e](../solutions/mit6.5940/project-mcu-e2e/README.md)。
 
 ## 1. 课程分发的两个压缩包（已镜像到本仓库）
 
@@ -51,5 +51,5 @@ quidproquo 的长文指出：随机搜索单元里约束字典用的键是 `mill
 
 1. ~~下载上面两个 zip~~ 已完成并随仓库同步：包在 `assignments/lab3-resources/`（`data.zip` 拆成 4 个分段，先合并再解压）。
 2. 解压后确认有 `ofa_mcunets.py`、`vww_supernet.pth`、`acc_datasets` 和 `data/vww-s256/val`（本机已确认）。
-3. 开服务器，装 `thop`、`onnx`，跑 Q1 到 Q10。
-4. 期末项目（子网 → int8 → 内存规划与 patch → MLPerf Tiny 四列）接在 Lab 3 之后。
+3. ~~开服务器，装 `thop`、`onnx`，跑 Q1 到 Q10~~ 已完成，结果在 [lab3-nas](../solutions/mit6.5940/lab3-nas/README.md)。上面 `millonMACs` 的拼写问题确认存在：照抄那一格时 Q6 的“MACs ≤ 50M”约束不生效，返回 126.8M MACs 的子网。
+4. ~~期末项目（子网 → int8 → 内存规划与 patch → MLPerf Tiny 四列）~~ 已完成，见 [project-mcu-e2e](../solutions/mit6.5940/project-mcu-e2e/README.md)。

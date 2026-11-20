@@ -9,10 +9,10 @@
 | 检查什么 | 命令 | 结果 |
 | --- | --- | --- |
 | 笔记的结构（16 节、元数据、公式块、追问链）、到 mlsys-infra 笔记的链接、索引、术语 | `python notes/check_notes.py` | 8 讲全部通过 |
-| 全部测试，AVX-512 + VNNI | `./scripts/run-all-tests.ps1` | 16 套全部通过，本地 169 个 + 1 个跳过（没装 TVM 时 `e2e-relax/tests/test_relax.py` 整个跳过；服务器的 TVM 0.27 venv 上这 3 个也通过） |
+| 全部测试，AVX-512 + VNNI | `./scripts/run-all-tests.ps1` | 18 套全部通过，本地 203 个 + 1 个跳过（没装 TVM 时 `e2e-relax/tests/test_relax.py` 整个跳过；服务器的 TVM 0.27 venv 上这 3 个也通过） |
 | 全部测试，无 AVX-512 的回退路径 | `$env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1` | 上一轮 10 套 135 个。之后新增的 6 套是纯 Python，本轮没有重跑这条 |
-| README、笔记、报告里的关键数字与原始数据一致 | `python scripts/check_claims.py`（对照 `claims.json`） | 158 条全部吻合 |
-| Markdown 相对链接、实验目录结构、报告（PDF 存在、图能找到、每条参考文献都被引用且没有未定义的引用）、claims、密钥扫描 | `./scripts/check-repo.ps1`（报告部分由 `scripts/check_reports.py` 完成） | 通过，15 个实验，13 份报告 |
+| README、笔记、报告里的关键数字与原始数据一致 | `python scripts/check_claims.py`（对照 `claims.json`） | 223 条全部吻合 |
+| Markdown 相对链接、实验目录结构、报告（PDF 存在、图能找到、每条参考文献都被引用且没有未定义的引用）、claims、密钥扫描 | `./scripts/check-repo.ps1`（报告部分由 `scripts/check_reports.py` 完成） | 通过，17 个实验，14 份报告 |
 | 代码风格 | `python -m ruff check .` | 通过 |
 | CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml)：Ubuntu + Python 3.12，CPU torch，ruff + `check-repo.ps1` + `run-all-tests.sh`；没有 mlsys-infra 同级目录时跳过跨仓库笔记名校验 | 配置就绪。Gitee 不原生运行 GitHub Actions，镜像到 GitHub 后生效 |
 
@@ -32,6 +32,8 @@
 | tensor-program-tuning | 16 | 编译出的调度与参考 GEMM 一致；分块必须整除；策略不超预算、空间比种群小时能终止；岭回归恢复线性函数 |
 | lab1-pruning | 10 | 细粒度剪枝保留幅度最大的权重、边界稀疏度；更新后重新乘掩码；按「第一次跌破容许线」选稀疏度并满足尺寸预算；通道剪枝的形状与 MACs；排序不改变函数 |
 | lab2-vgg | 6 | 一维 k-means 恢复分离良好的簇；量化后每层至多 \(2^b\) 个值、QAT 一步后仍是；scale / zero point 映射区间端点；输入量化符合课程约定；BN 融合前后输出一致、整数 VGG 与浮点 argmax 一致 |
+| lab3-nas | 29 | 编码与 mutate / crossover 不越界；手写 torch 参考网络用 hook 核对卷积 MACs 与参数量；课程口径 / 卷积口径之比；两种峰值规则、最小子网的手算数字、单调性；排序指标；预测器在合成数据上收敛；搜索器遵守约束与查询数，进化在玩具问题上胜过随机；不可行时报错 |
+| project-mcu-e2e | 5 | BN 折叠前后输出一致且不留 BN，BN 在卷积之前时不折叠；Flash 字节按权重、偏置、逐通道 scale 手算；卷积 MACs 手算；延迟拟合在残差内复现 TinyEngine 的公开点，过原点形式截距为 0 |
 | lab4-awq | 4 | 伪量化的级数与误差界；显著列逐位恢复；\(\alpha = 0\) 的缩放搜索等于 RTN；截断不放大误差 |
 | lab5-tinychat | 6 | `QM_x86` 打包往返与半字节顺序；`maddubs` 符号技巧在 [−127, 127] 上对全部 16 × 255 个组合精确，−128 的反例只出现在负权重上；块点积与 GEMV 对整数参考；patch 只动五个 starter 文件 |
 | e2e-relax | 3 + 3 | NumPy 卷积与前向对 PyTorch；四个 Relax 模块对 NumPy；`fuse` 的键空间约束（融合一次没有 `op_pattern`，两次有）；调度原语都在 |
@@ -61,7 +63,7 @@ q4-gemv 的 Triton 内核不在 pytest 里：`python gpu/bench_gpu.py check` 在
 
 - 没有开发板：没有在 MCU、NPU、Pi 上跑过任何一个实验。
 - [runtime-compare](solutions/edge-runtime/runtime-compare/README.md) 在 x86 服务器 CPU 上对照了 ORT、LiteRT、ExecuTorch、TVM；TFLite Micro 没有跑，那张 micronet 的 MetaSchedule 也没有调完（8 核上的 MetaSchedule 在 [e2e-relax](solutions/mlc/e2e-relax/README.md) 跑通）。
-- MIT 6.5940 Lab 3（NAS）与期末项目还在做，依赖课程分发的 `mcunetv2-dev` 代码与 VWW 数据。本仓库的搜索器、规划器、块格式是最小实现，与官方实现对齐的部分（gguf 逐字节、ORT 逐位）在各 README 写明。
+- 期末项目的 MCU 延迟是用 TinyEngine 公开的 VWW 数字拟合的线性模型（4.15 ms/MMAC + 2.45 ms），不是板上实测；Lab 3 的精度都是单次评估，92.5% 附近验证集标准误 0.41 pp。本仓库的搜索器、规划器、块格式是最小实现，与官方实现对齐的部分（gguf 逐字节、ORT 逐位）在各 README 写明。
 - runtime-compare 的时间是 0.5 核 cgroup 下的 CPU 时间：同一批内部的排序可靠，跨批的绝对值能差一半。
 - 官方 starter code 未镜像，见 [UPSTREAM.md](UPSTREAM.md)。
 - llama.cpp 端到端比 q4-gemv 预测多出的 0.41–0.47 ms/token 没有用 nsys 拆到具体算子；llama-perplexity 的 ctx 512 协议与 mlsys-infra 的 HF 协议不同，两边困惑度不能直接比。

@@ -1,0 +1,11 @@
+searcher,queries,best_pred_mean,best_pred_std
+random,100,91.7932,0.1826
+random,300,91.9348,0.1146
+random,1000,92.0513,0.0573
+random,2000,92.1115,0.0309
+random,5000,92.1878,0.058
+evolution,100,91.7932,0.1826
+evolution,300,92.1127,0.1714
+evolution,1000,92.5935,0.0728
+evolution,2000,92.8212,0.0804
+evolution,5000,92.8893,0.0597

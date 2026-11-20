@@ -20,7 +20,7 @@
 
 ## MIT 6.5940
 
-课程页写的五次 lab：剪枝、量化、神经架构搜索、LLM 压缩、在笔记本上部署 LLM。2025 秋因教师学术休假未开设，题面与数据以 Fall 2024 为准。Lab 1、2、4、5 的合订报告在 [reports/mit6.5940-labs](../reports/mit6.5940-labs/mit65940_labs_report.pdf)。
+课程页写的五次 lab：剪枝、量化、神经架构搜索、LLM 压缩、在笔记本上部署 LLM。2025 秋因教师学术休假未开设，题面与数据以 Fall 2024 为准。Lab 1–5 的合订报告在 [reports/mit6.5940-labs](../reports/mit6.5940-labs/mit65940_labs_report.pdf)。
 
 ### Lab 1　剪枝
 
@@ -39,7 +39,12 @@ mlsys-infra 在 GPT-2 124M 上测过一次性剪枝：50% 稀疏时幅度剪枝�
 ### Lab 3　神经架构搜索
 
 官方题：在 MCUNet 的 OFA 超网里，用效率预测器（峰值 SRAM、MACs）和 MLP 精度预测器做随机与进化搜索，满足 250 KB / 60M MACs 下 ≥ 92.5%（bonus 200 KB / 30M 下 ≥ 90%），并判断 256 KB / 15M 与 64 KB 是否可行。
-超网代码与 VWW 数据来自课程分发的 `mcunetv2-dev` 与 `data` 包；这一题和以它为起点的期末项目（子网 → int8 → 内存规划与 patch → MLPerf Tiny 四列）在做，结果出来后补在这里。两个包的链接、公开镜像的检查结果与待办写在 [mit6.5940-lab3-资源记录](mit6.5940-lab3-资源记录.md)。
+超网代码与 VWW 数据来自课程分发的 `mcunetv2-dev` 与 `data` 包，链接与镜像写在 [mit6.5940-lab3-资源记录](mit6.5940-lab3-资源记录.md)。
+[lab3-nas](../solutions/mit6.5940/lab3-nas/README.md)：闭式 MACs / 峰值在 1,004 个子网上与课程计数器 0 差异（课程计数器把 BN 也按每元素 4 次计入 MACs）；MLP 预测器 MAE 0.18 pp、Kendall 0.925；Q9 选出的子网 250 KB / 60M 实测 92.556%，200 KB / 30M 90.372%；Q10 的 256 KB / 15M 可行，64 KB 整图不可行。验证集标准误 0.41 pp，210 个候选里 67 个过 92.5% 的门槛，候选之间排不出可靠名次。
+
+### 期末项目
+
+课程期末项目形式开放。[project-mcu-e2e](../solutions/mit6.5940/project-mcu-e2e/README.md) 把 Lab 3 的两个子网与 MCUNet 发布的三个 VWW 模型走同一条 BN 折叠 → ONNX → int8 PTQ 流程，按 MLPerf Tiny 四列记账：Lab 3 子网 int8 92.53%，比 mcunet-vww2 的 91.37% 高，估算 MCU 延迟相近（223 对 234 ms），Flash 多 190 KB，patch 后峰值 SRAM 250 → 122 KB；最小子网 patch 后 23.7 KB，所以 Q10 的“64 KB 不可行”只对整图执行成立。英文 4 页报告在 [reports/project-mcu-e2e](../reports/project-mcu-e2e/project_mcu_e2e_report.pdf)。
 不依赖具体网络的那笔账已经在模块 01 和模块 04：SRAM 是硬约束，激活峰值有下界，patch 用重算换峰值。
 
 ### Lab 4　LLM 压缩

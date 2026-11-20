@@ -1,0 +1,6 @@
+model,resolution,folded_pairs,bn_left,fold_max_abs_logit_diff,source,tflite
+mcunet-vww0,64,42,0,6.258487701416016e-06,MCUNet release mcunet-10fps_vww,mcunet-10fps_vww.tflite
+mcunet-vww1,80,45,0,8.58306884765625e-06,MCUNet release mcunet-5fps_vww,mcunet-5fps_vww.tflite
+mcunet-vww2,144,66,0,1.621246337890625e-05,MCUNet release mcunet-320kb-1mb_vww,mcunet-320kb-1mb_vww.tflite
+ours-250KB-60M,160,57,0,5.364418029785156e-06,"Lab 3 search, subnet_250KB_60M_pred.pt",
+ours-200KB-30M,128,42,0,6.079673767089844e-06,"Lab 3 search, subnet_200KB_30M_pred.pt",

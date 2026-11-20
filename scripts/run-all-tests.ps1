@@ -30,9 +30,11 @@ $suites = [ordered]@{
     "mit6.5940 lab1-pruning"           = "solutions/mit6.5940/lab1-pruning/tests"
     "mit6.5940 lab2-quantization"      = "solutions/mit6.5940/lab2-quantization/tests"
     "mit6.5940 lab2-vgg"               = "solutions/mit6.5940/lab2-vgg/tests"
+    "mit6.5940 lab3-nas"               = "solutions/mit6.5940/lab3-nas/tests"
     "mit6.5940 lab4-awq"               = "solutions/mit6.5940/lab4-awq/tests"
     "mit6.5940 lab5-tinychat"          = "solutions/mit6.5940/lab5-tinychat/tests"
     "mit6.5940 tinyengine-memory"      = "solutions/mit6.5940/tinyengine-memory/tests"
+    "mit6.5940 project-mcu-e2e"        = "solutions/mit6.5940/project-mcu-e2e/tests"
     "mlc tensor-program-tuning"        = "solutions/mlc/tensor-program-tuning/tests"
     "mlc e2e-relax"                    = "solutions/mlc/e2e-relax/tests"
 }

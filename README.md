@@ -1,10 +1,12 @@
-# 端侧部署与推理优化
+# Kiloscale
+
+**From kernels to kilobytes** — 端侧部署与推理优化。仓库路径仍是 `edge-deploy`，Kiloscale 是项目名：把一张网从 int8 内核一路算到单片机上几百 KB 的 SRAM。
 
 面向端侧推理、模型部署和 NPU 编译岗位的课程仓库。八讲笔记、公式卡和八个实验只为一件事服务：当场把一层卷积或一次解码的账算完，说出误差从哪一层进来，并说明换一种尺度、布局、分块或格式之后数字怎么变。
 
 材料来自 MIT 6.5940 TinyML and Efficient Deep Learning（Song Han，Fall 2024）、Tianqi Chen 的 Machine Learning Compilation，以及 CMSIS-NN、TFLite Micro、ONNX Runtime、PULP Dory、llama.cpp 这些公开实现里反复出现的契约。取舍见 [CURRICULUM.md](CURRICULUM.md)。作者 [ShaneLiu04](https://github.com/ShaneLiu04)，与上述学校、实验室和项目无隶属关系。`solutions/` 是个人实现，正在修这些课的同学不要把它当作作业提交。
 
-八个模块的实验先在一台 4 物理核的 Ice Lake 服务器虚拟机（AVX-512 + VNNI，Windows，g++ 13.2）上完成，不需要 GPU 和开发板。之后把同一份代码搬到 AutoDL 的 2 × Xeon Platinum 8470Q（Sapphire Rapids，多了 AMX）和 RTX 6000D 上重跑，看哪些结论换机器后会翻转；又加了第九个实验，用 llama.cpp 跑完整的 Qwen2.5-7B，检验单层 GEMV 推出的解码预测；第十个实验 runtime-compare 把 lab2 的同一张网交给 PyTorch、ONNX Runtime fp32 / int8、LiteRT、ExecuTorch、TVM 六条路径，在 AutoDL 无卡容器上比精度和 CPU 时间。最后按课程题面把 MIT 6.5940 的 Lab 1、2、4、5 和 MLC 作业 1 独立做了一遍（VGG 剪枝与量化、OPT-1.3B 上的 AWQ、TinyChat 的 W4A8 kernel 与 LLaMA2-7B、TVM 0.27 的 Relax 与 MetaSchedule），Lab 3 的 NAS 与期末项目在做。每个数字都能由 `python scripts/check_claims.py` 对照原始结果复核。
+八个模块的实验先在一台 4 物理核的 Ice Lake 服务器虚拟机（AVX-512 + VNNI，Windows，g++ 13.2）上完成，不需要 GPU 和开发板。之后把同一份代码搬到 AutoDL 的 2 × Xeon Platinum 8470Q（Sapphire Rapids，多了 AMX）和 RTX 6000D 上重跑，看哪些结论换机器后会翻转；又加了第九个实验，用 llama.cpp 跑完整的 Qwen2.5-7B，检验单层 GEMV 推出的解码预测；第十个实验 runtime-compare 把 lab2 的同一张网交给 PyTorch、ONNX Runtime fp32 / int8、LiteRT、ExecuTorch、TVM 六条路径，在 AutoDL 无卡容器上比精度和 CPU 时间。最后按课程题面把 MIT 6.5940 的 Lab 1–5 和 MLC 作业 1 独立做了一遍（VGG 剪枝与量化、OFA-MCUNet 上的预测器与进化搜索、OPT-1.3B 上的 AWQ、TinyChat 的 W4A8 kernel 与 LLaMA2-7B、TVM 0.27 的 Relax 与 MetaSchedule），并用期末项目把 Lab 3 搜出的子网和 MCUNet 官方 VWW 模型放进同一张表：int8 精度、Flash、峰值 SRAM（含 patch）、按 TinyEngine 公开数字拟合的 MCU 延迟。每个数字都能由 `python scripts/check_claims.py` 对照原始结果复核。
 
 数据中心一侧（GPU、FlashAttention、GPTQ / AWQ、KV cache、分布式训练）在姊妹仓库 [mlsys-infra](https://gitee.com/liu-xingyan04/mlsys-infra)。两边按同一套结构写（16 节笔记、claims、VERIFICATION、作品集），对应关系见 [BRIDGE.md](BRIDGE.md)。
 
@@ -91,6 +93,8 @@ python tools/edge_calc.py pipeline --tiles 8 --dma 2 --compute 2
 | --- | --- | --- |
 | 6.5940 Lab 1 剪枝 | [代码](solutions/mit6.5940/lab1-pruning/code/) · [测试](solutions/mit6.5940/lab1-pruning/tests/) · [图](solutions/mit6.5940/lab1-pruning/artifacts/figures/) · [说明](solutions/mit6.5940/lab1-pruning/README.md) | VGG 细粒度剪到 23.6% 尺寸，微调后 92.72%（稠密 92.95%）；通道剪 30%：MACs 0.504 倍、延迟 0.64 倍、92.52% |
 | 6.5940 Lab 2 量化 | [代码](solutions/mit6.5940/lab2-vgg/code/) · [测试](solutions/mit6.5940/lab2-vgg/tests/) · [图](solutions/mit6.5940/lab2-vgg/artifacts/figures/) · [说明](solutions/mit6.5940/lab2-vgg/README.md) | k-means 8 / 4 / 2 bit QAT 后 92.82 / 92.84 / 92.18%；整数 int8 VGG 92.94%，int4 PTQ 89.98% |
+| 6.5940 Lab 3 NAS | [代码](solutions/mit6.5940/lab3-nas/code/) · [测试](solutions/mit6.5940/lab3-nas/tests/) · [图](solutions/mit6.5940/lab3-nas/artifacts/figures/) · [说明](solutions/mit6.5940/lab3-nas/README.md) | 闭式 MACs / 峰值在 1004 个子网上与课程计数器 0 差异、快 310 倍；预测器 MAE 0.18 pp、Kendall 0.925；Q9 答案 250KB/60M 实测 92.556%，200KB/30M 90.372% |
+| 6.5940 期末项目 | [代码](solutions/mit6.5940/project-mcu-e2e/code/) · [测试](solutions/mit6.5940/project-mcu-e2e/tests/) · [图](solutions/mit6.5940/project-mcu-e2e/artifacts/figures/) · [说明](solutions/mit6.5940/project-mcu-e2e/README.md) | Lab 3 子网 int8 92.53%，比 mcunet-vww2 高 1.17 pp、估算延迟相近（223 对 234 ms），patch 后 SRAM 250 → 122 KB；ORT 默认 Entropy 校准与 MinMax 逐字节相同 |
 | 6.5940 Lab 4 AWQ | [代码](solutions/mit6.5940/lab4-awq/code/) · [测试](solutions/mit6.5940/lab4-awq/tests/) · [图](solutions/mit6.5940/lab4-awq/artifacts/figures/) · [说明](solutions/mit6.5940/lab4-awq/README.md) | OPT-1.3B W3 g128：RTN 107.97，按激活保留 1% 16.69、按权重 103.41，AWQ 16.87、加截断 16.04（fp16 14.47） |
 | 6.5940 Lab 5 TinyChat | [代码](solutions/mit6.5940/lab5-tinychat/code/) · [测试](solutions/mit6.5940/lab5-tinychat/tests/) · [图](solutions/mit6.5940/lab5-tinychat/artifacts/figures/) · [说明](solutions/mit6.5940/lab5-tinychat/README.md) | W4A8 kernel 全部通过；all_techniques 28.2 倍于参考，LLaMA2-7B decode 12.5 倍；`-O3` 下 51.5 倍、191 ms/token |
 | MLC 作业 1 | [代码](solutions/mlc/e2e-relax/code/) · [测试](solutions/mlc/e2e-relax/tests/) · [图](solutions/mlc/e2e-relax/artifacts/figures/) · [说明](solutions/mlc/e2e-relax/README.md) | TVM 0.27 Relax 五种写法都是 83.88%；默认 2375 µs（linear0 占 2344）→ 手写调度 157 → MetaSchedule 44，PyTorch 505 |
@@ -103,7 +107,7 @@ python -m pytest -q tests
 python scripts/run_experiments.py
 ```
 
-全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；16 套 172 个测试，没装 TVM 时跳过 3 个；`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接、报告与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)，每次检查的结果记在 [VERIFICATION.md](VERIFICATION.md)。
+全部测试：`./scripts/run-all-tests.ps1`（Linux：`scripts/run-all-tests.sh`；18 套 206 个测试，没装 TVM 时跳过 3 个；`EDGE_MARCH=haswell` 时验证无 AVX-512 的回退路径）。笔记结构：`python notes/check_notes.py`。数字复核：`python scripts/check_claims.py`。仓库结构、链接、报告与密钥检查：`./scripts/check-repo.ps1`。都写进了 [CI 配置](.github/workflows/ci.yml)，每次检查的结果记在 [VERIFICATION.md](VERIFICATION.md)。
 
 ## 报告与服务器实测
 
@@ -126,7 +130,8 @@ python scripts/run_experiments.py
 | [tinyengine-memory 激活规划](reports/tinyengine-memory/tinyengine_memory_report.pdf) | 15 | 按大小降序贪心在 11 个配置上正好等于存活下界；patch 推理把峰值降 3.75 倍，代价是整网 MACs 多 27% |
 | [runtime-compare 六条推理路径](reports/runtime-compare/runtime_compare_report.pdf) | 9 | 四条 fp32 导出链与 PyTorch 逐图同答；单线程 ORT int8 127 µs、LiteRT 166、ExecuTorch 192、ORT fp32 202、PyTorch eager 1173、不调优的 TVM 4107 |
 | [edge-runtime-server 服务器复测](reports/edge-runtime-server/edge_runtime_server_report.pdf) | 14 | 同一份代码在 Xeon 8470Q 和 RTX 6000D 上重跑，大部分指标只改常数，三条「经验法则」翻转 |
-| [mit6.5940-labs 官方 Lab 1、2、4、5](reports/mit6.5940-labs/mit65940_labs_report.pdf) | 8 | 显著性来自激活不来自权重（保留 1%：16.69 对 103.41）；TinyChat 的符号技巧依赖量化器保证激活不取 −128 |
+| [mit6.5940-labs 官方 Lab 1–5](reports/mit6.5940-labs/mit65940_labs_report.pdf) | 10 | 显著性来自激活不来自权重（保留 1%：16.69 对 103.41）；NAS 在 0.4 pp 的验证噪声里只能选出“好的一群”，排不出名次 |
+| [project-mcu-e2e 期末项目（英文）](reports/project-mcu-e2e/project_mcu_e2e_report.pdf) | 4 | 搜出来的子网在同等估算延迟下比 MCUNet 官方模型高 1.2 个点，但 Flash 多 190 KB；patch 对不同网络的收益差别很大 |
 | [mlc-e2e-relax MLC 作业 1](reports/mlc-e2e-relax/mlc_e2e_relax_report.pdf) | 4 | 端到端瓶颈是 linear0 不是卷积；MetaSchedule 的数据库在融合前后对不上时静默退回默认调度 |
 
 同一份代码在两台主机上的 34 项指标对照在 [CROSS-HOST.md](interview/CROSS-HOST.md)：大部分指标快 1.3–2.7 倍，但 Winograd 在 56² 层、512 位向量、两线程双缓冲这三条结论在服务器上翻转。

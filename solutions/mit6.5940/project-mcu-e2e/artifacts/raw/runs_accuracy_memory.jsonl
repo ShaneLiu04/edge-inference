@@ -1,0 +1,52 @@
+{"kind": "run", "git_commit": null, "git_dirty": null, "started": "2026-11-20T10:05:41+0800", "python": "3.12.3", "platform": "Linux-5.15.0-78-generic-x86_64-with-glibc2.35", "processor": "x86_64", "cpu_count": 208, "argv": ["scripts/run_project.py", "--stage", "accuracy", "memory"]}
+{"stage": "accuracy", "model": "mcunet-vww0", "variant": "fp32-torch", "acc_split0": 87.295}
+{"stage": "accuracy", "model": "mcunet-vww1", "variant": "fp32-torch", "acc_split0": 89.032}
+{"stage": "accuracy", "model": "mcunet-vww2", "variant": "fp32-torch", "acc_split0": 91.489}
+{"stage": "accuracy", "model": "ours-250KB-60M", "variant": "fp32-torch", "acc_split0": 92.556}
+{"stage": "accuracy", "model": "ours-200KB-30M", "variant": "fp32-torch", "acc_split0": 90.372}
+{"stage": "accuracy", "model": "mcunet-vww0", "variant": "fp32-ort", "acc_split0": 87.295, "onnx_bytes": 1498045}
+{"stage": "accuracy", "model": "mcunet-vww1", "variant": "fp32-ort", "acc_split0": 89.007, "onnx_bytes": 1752285}
+{"stage": "accuracy", "model": "mcunet-vww2", "variant": "fp32-ort", "acc_split0": 91.464, "onnx_bytes": 2588163}
+{"stage": "accuracy", "model": "ours-250KB-60M", "variant": "fp32-ort", "acc_split0": 92.556, "onnx_bytes": 3330166}
+{"stage": "accuracy", "model": "ours-200KB-30M", "variant": "fp32-ort", "acc_split0": 90.372, "onnx_bytes": 2192293}
+{"stage": "accuracy", "model": "mcunet-vww0", "variant": "minmax-pc-uint8", "acc_split0": 87.146, "onnx_bytes": 572756, "quantize_s": 8.8}
+{"stage": "accuracy", "model": "mcunet-vww0", "variant": "minmax-pt-uint8", "acc_split0": 86.253, "onnx_bytes": 505023, "quantize_s": 8.6}
+{"stage": "accuracy", "model": "mcunet-vww0", "variant": "entropy-pc-uint8", "acc_split0": 87.146, "onnx_bytes": 572756, "quantize_s": 23.5}
+{"stage": "accuracy", "model": "mcunet-vww0", "variant": "entropy2048-pc-uint8", "acc_split0": 86.402, "onnx_bytes": 572751, "quantize_s": 57.6}
+{"stage": "accuracy", "model": "mcunet-vww0", "variant": "percentile-pc-uint8", "acc_split0": 87.146, "onnx_bytes": 572767, "quantize_s": 24.4}
+{"stage": "accuracy", "model": "mcunet-vww0", "variant": "minmax-pc-int8", "acc_split0": 87.246, "onnx_bytes": 610588, "quantize_s": 11.3}
+{"stage": "accuracy", "model": "mcunet-vww1", "variant": "minmax-pc-uint8", "acc_split0": 88.834, "onnx_bytes": 661010, "quantize_s": 13.3}
+{"stage": "accuracy", "model": "mcunet-vww1", "variant": "minmax-pt-uint8", "acc_split0": 87.295, "onnx_bytes": 580156, "quantize_s": 10.1}
+{"stage": "accuracy", "model": "mcunet-vww1", "variant": "entropy-pc-uint8", "acc_split0": 88.834, "onnx_bytes": 661010, "quantize_s": 27.2}
+{"stage": "accuracy", "model": "mcunet-vww1", "variant": "entropy2048-pc-uint8", "acc_split0": 84.615, "onnx_bytes": 660998, "quantize_s": 62.0}
+{"stage": "accuracy", "model": "mcunet-vww1", "variant": "percentile-pc-uint8", "acc_split0": 88.685, "onnx_bytes": 661017, "quantize_s": 28.7}
+{"stage": "accuracy", "model": "mcunet-vww1", "variant": "minmax-pc-int8", "acc_split0": 88.586, "onnx_bytes": 701591, "quantize_s": 13.2}
+{"stage": "accuracy", "model": "mcunet-vww2", "variant": "minmax-pc-uint8", "acc_split0": 91.365, "onnx_bytes": 978384, "quantize_s": 22.9}
+{"stage": "accuracy", "model": "mcunet-vww2", "variant": "minmax-pt-uint8", "acc_split0": 88.933, "onnx_bytes": 857888, "quantize_s": 21.1}
+{"stage": "accuracy", "model": "mcunet-vww2", "variant": "entropy-pc-uint8", "acc_split0": 91.365, "onnx_bytes": 978384, "quantize_s": 48.4}
+{"stage": "accuracy", "model": "mcunet-vww2", "variant": "entropy2048-pc-uint8", "acc_split0": 86.303, "onnx_bytes": 978357, "quantize_s": 96.4}
+{"stage": "accuracy", "model": "mcunet-vww2", "variant": "percentile-pc-uint8", "acc_split0": 91.365, "onnx_bytes": 978388, "quantize_s": 51.5}
+{"stage": "accuracy", "model": "mcunet-vww2", "variant": "minmax-pc-int8", "acc_split0": 91.241, "onnx_bytes": 1038235, "quantize_s": 22.9}
+{"stage": "accuracy", "model": "ours-250KB-60M", "variant": "minmax-pc-uint8", "acc_split0": 92.531, "onnx_bytes": 1343459, "quantize_s": 22.6}
+{"stage": "accuracy", "model": "ours-250KB-60M", "variant": "minmax-pt-uint8", "acc_split0": 91.96, "onnx_bytes": 1181941, "quantize_s": 22.5}
+{"stage": "accuracy", "model": "ours-250KB-60M", "variant": "entropy-pc-uint8", "acc_split0": 92.531, "onnx_bytes": 1343459, "quantize_s": 45.5}
+{"stage": "accuracy", "model": "ours-250KB-60M", "variant": "entropy2048-pc-uint8", "acc_split0": 87.37, "onnx_bytes": 1343436, "quantize_s": 127.9}
+{"stage": "accuracy", "model": "ours-250KB-60M", "variant": "percentile-pc-uint8", "acc_split0": 92.407, "onnx_bytes": 1343463, "quantize_s": 48.5}
+{"stage": "accuracy", "model": "ours-250KB-60M", "variant": "minmax-pc-int8", "acc_split0": 92.506, "onnx_bytes": 1433896, "quantize_s": 23.0}
+{"stage": "accuracy", "model": "ours-200KB-30M", "variant": "minmax-pc-uint8", "acc_split0": 90.223, "onnx_bytes": 896885, "quantize_s": 18.0}
+{"stage": "accuracy", "model": "ours-200KB-30M", "variant": "minmax-pt-uint8", "acc_split0": 89.752, "onnx_bytes": 787161, "quantize_s": 16.7}
+{"stage": "accuracy", "model": "ours-200KB-30M", "variant": "entropy-pc-uint8", "acc_split0": 90.223, "onnx_bytes": 896885, "quantize_s": 35.7}
+{"stage": "accuracy", "model": "ours-200KB-30M", "variant": "entropy2048-pc-uint8", "acc_split0": 85.955, "onnx_bytes": 896869, "quantize_s": 91.9}
+{"stage": "accuracy", "model": "ours-200KB-30M", "variant": "percentile-pc-uint8", "acc_split0": 90.223, "onnx_bytes": 896888, "quantize_s": 37.3}
+{"stage": "accuracy", "model": "ours-200KB-30M", "variant": "minmax-pc-int8", "acc_split0": 90.074, "onnx_bytes": 957882, "quantize_s": 19.1}
+{"stage": "accuracy", "model": "mcunet-vww0", "variant": "official-tflite-int8", "acc_split0": 87.221, "onnx_bytes": 543248, "note": "input <class 'numpy.int8'> q[0.007843137718737125, -1.0]"}
+{"stage": "accuracy", "model": "mcunet-vww1", "variant": "official-tflite-int8", "acc_split0": 88.859, "onnx_bytes": 635968, "note": "input <class 'numpy.int8'> q[0.007843137718737125, -1.0]"}
+{"stage": "accuracy", "model": "mcunet-vww2", "variant": "official-tflite-int8", "acc_split0": 91.29, "onnx_bytes": 941120, "note": "input <class 'numpy.int8'> q[0.007843137718737125, -1.0]"}
+{"stage": "accuracy", "seconds": 157.1}
+{"stage": "memory", "model": "mcunet-vww0", "resolution": 64, "mmacs_conv": 5.958, "mmacs_lab_counter": 6.931, "params": 363858, "flash_bytes": 399828, "flash_weights": 358744, "kb_lab_rule": 60.0, "kb_lower_bound": 60.0, "kb_greedy": 60.0, "kb_greedy_inplace": 56.0, "kb_patch": 36.0, "patch_cut": 3, "patch_p": 2, "patch_mac_overhead": 1.242, "kb_patch_inplace": 30.47, "patch_inplace_cut": 3, "patch_inplace_p": 2, "patch_inplace_mac_overhead": 1.242, "mcu_ms_est": 27.2, "mcu_ms_est_origin": 25.1}
+{"stage": "memory", "model": "mcunet-vww1", "resolution": 80, "mmacs_conv": 11.579, "mmacs_lab_counter": 13.295, "params": 426634, "flash_bytes": 469616, "flash_weights": 420520, "kb_lab_rule": 93.75, "kb_lower_bound": 93.75, "kb_greedy": 93.75, "kb_greedy_inplace": 87.5, "kb_patch": 50.0, "patch_cut": 3, "patch_p": 2, "patch_mac_overhead": 1.084, "kb_patch_inplace": 37.5, "patch_inplace_cut": 3, "patch_inplace_p": 3, "patch_inplace_mac_overhead": 1.158, "mcu_ms_est": 50.5, "mcu_ms_est_origin": 48.7}
+{"stage": "memory", "model": "mcunet-vww2", "resolution": 144, "mmacs_conv": 55.771, "mmacs_lab_counter": 63.049, "params": 630146, "flash_bytes": 694212, "flash_weights": 621032, "kb_lab_rule": 263.25, "kb_lower_bound": 263.25, "kb_greedy": 263.25, "kb_greedy_inplace": 162.0, "kb_patch": 263.25, "patch_cut": 2, "patch_p": 2, "patch_mac_overhead": 1.011, "kb_patch_inplace": 162.0, "patch_inplace_cut": 2, "patch_inplace_p": 2, "patch_inplace_mac_overhead": 1.011, "mcu_ms_est": 233.9, "mcu_ms_est_origin": 234.5}
+{"stage": "memory", "model": "ours-250KB-60M", "resolution": 160, "mmacs_conv": 53.135, "mmacs_lab_counter": 59.382, "params": 803094, "flash_bytes": 889048, "flash_weights": 790864, "kb_lab_rule": 250.0, "kb_lower_bound": 250.0, "kb_greedy": 250.0, "kb_greedy_inplace": 250.0, "kb_patch": 122.02, "patch_cut": 5, "patch_p": 2, "patch_mac_overhead": 1.182, "kb_patch_inplace": 122.02, "patch_inplace_cut": 5, "patch_inplace_p": 2, "patch_inplace_mac_overhead": 1.182, "mcu_ms_est": 223.0, "mcu_ms_est_origin": 223.4}
+{"stage": "memory", "model": "ours-200KB-30M", "resolution": 128, "mmacs_conv": 26.05, "mmacs_lab_counter": 29.296, "params": 527902, "flash_bytes": 586260, "flash_weights": 519600, "kb_lab_rule": 160.0, "kb_lower_bound": 160.0, "kb_greedy": 160.0, "kb_greedy_inplace": 160.0, "kb_patch": 120.0, "patch_cut": 4, "patch_p": 2, "patch_mac_overhead": 1.208, "kb_patch_inplace": 112.0, "patch_inplace_cut": 3, "patch_inplace_p": 2, "patch_inplace_mac_overhead": 1.086, "mcu_ms_est": 110.6, "mcu_ms_est_origin": 109.5}
+{"stage": "memory", "model": "smallest-subnet", "resolution": 96, "mmacs_conv": 7.237, "mmacs_lab_counter": 8.302, "params": 300898, "flash_bytes": 333864, "flash_weights": 296216, "kb_lab_rule": 72.0, "kb_lower_bound": 72.0, "kb_greedy": 72.0, "kb_greedy_inplace": 72.0, "kb_patch": 23.7, "patch_cut": 4, "patch_p": 3, "patch_mac_overhead": 1.214, "kb_patch_inplace": 23.7, "patch_inplace_cut": 4, "patch_inplace_p": 3, "patch_inplace_mac_overhead": 1.214, "mcu_ms_est": 32.5, "mcu_ms_est_origin": 30.4}
+{"stage": "memory", "seconds": 97.5}

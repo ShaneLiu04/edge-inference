@@ -1,8 +1,8 @@
 \documentclass[11pt,a4paper]{ctexart}
 \input{../common/preamble.tex}
-\graphicspath{{../../solutions/mit6.5940/lab1-pruning/artifacts/figures/}{../../solutions/mit6.5940/lab2-vgg/artifacts/figures/}{../../solutions/mit6.5940/lab4-awq/artifacts/figures/}{../../solutions/mit6.5940/lab5-tinychat/artifacts/figures/}}
+\graphicspath{{../../solutions/mit6.5940/lab1-pruning/artifacts/figures/}{../../solutions/mit6.5940/lab2-vgg/artifacts/figures/}{../../solutions/mit6.5940/lab3-nas/artifacts/figures/}{../../solutions/mit6.5940/lab4-awq/artifacts/figures/}{../../solutions/mit6.5940/lab5-tinychat/artifacts/figures/}}
 
-\title{MIT 6.5940 Fall 2024 实验报告：\\剪枝、k-means 与整数量化、AWQ、W4A8 kernel}
+\title{MIT 6.5940 Fall 2024 实验报告：\\剪枝、量化、NAS、AWQ、W4A8 kernel}
 \author{\authorline}
 \date{2026 年 11 月}
 
@@ -10,13 +10,14 @@
 \maketitle
 
 \begin{abstract}
-本报告覆盖 MIT 6.5940（TinyML and Efficient Deep Learning，Song Han，Fall 2024）的 Lab 1、Lab 2（官方 VGG 题）、Lab 4 与 Lab 5；Lab 3（NAS）与期末项目单独成文。
+本报告覆盖 MIT 6.5940（TinyML and Efficient Deep Learning，Song Han，Fall 2024）的 Lab 1、Lab 2（官方 VGG 题）、Lab 3、Lab 4 与 Lab 5；期末项目单独成文（英文）。
 实现全部独立编写，不复制官方 notebook；数据与协议与课程一致。
 主要结论：
 （a）Lab 1：按敏感度为 9 层选稀疏度，VGG 只剩 23.6\% 尺寸，5 轮微调回到 92.72\%（要求 $\le$25\%、$\ge$92.5\%）；通道剪 30\% 时 MACs 0.504 倍、单线程延迟 0.64 倍、微调后 92.52\%；
 （b）Lab 2：k-means 8 / 4 / 2 bit 经 QAT 分别为 92.82 / 92.84 / 92.18\%；整数 int8 VGG 92.94\%，与 fp32 的 92.95\% 只差 1 张图；
-（c）Lab 4：OPT-1.3B 的 W3 g128 RTN 困惑度 107.97，按激活保留 1\% 通道为 fp16 是 16.69，按权重或随机保留 1\% 都在 100 以上；AWQ 不保留任何 fp16 通道做到 16.87，加截断 16.04；
-（d）Lab 5：TinyChatEngine 的 W4A8 GEMM 六个实现全部通过官方正确性检查，四种技术合用比参考实现快 28.2 倍（26.09 对 0.92 GOP/s），LLaMA2-7B 端到端 decode 快 12.5 倍；把课程 Makefile 的 \texttt{-O0} 换成 \texttt{-O3}，kernel 差距拉大到 51.5 倍，端到端 191 ms/token。
+（c）Lab 3：自写的闭式 MACs / 峰值模型在 1,004 个子网上与课程计数器 0 差异；MLP 预测器 MAE 0.18 pp；250 KB / 60M 约束下选出的子网实测 92.556\%，但验证集标准误 0.41 pp，候选间的排名不可靠；
+（d）Lab 4：OPT-1.3B 的 W3 g128 RTN 困惑度 107.97，按激活保留 1\% 通道为 fp16 是 16.69，按权重或随机保留 1\% 都在 100 以上；AWQ 不保留任何 fp16 通道做到 16.87，加截断 16.04；
+（e）Lab 5：TinyChatEngine 的 W4A8 GEMM 六个实现全部通过官方正确性检查，四种技术合用比参考实现快 28.2 倍（26.09 对 0.92 GOP/s），LLaMA2-7B 端到端 decode 快 12.5 倍；把课程 Makefile 的 \texttt{-O0} 换成 \texttt{-O3}，kernel 差距拉大到 51.5 倍，端到端 191 ms/token。
 \end{abstract}
 
 \tableofcontents
@@ -161,6 +162,48 @@ fp32（融合 BN 后） & 92.95\% & 35.20 MiB \\
 8 bit 时两者都与 fp32 几乎相同，整数版本层间全是 int8，可以直接映射到 CMSIS-NN / TFLM 的 int8 kernel。
 \end{findingbox}
 
+\section{Lab 3：OFA-MCUNet 上的神经架构搜索}\label{sec:lab3}
+
+\subsection{设置}
+课程的 OFA-MCUNet 超网~\cite{ofa,mcunet}（\texttt{mcunet384}，VWW 二分类）：分辨率 96--176、宽度 0.5 / 0.75 / 1.0，每个 block 可选卷积核 3 / 5 / 7、扩张比 3 / 4 / 6，每个 stage 可选深度。
+评估流程与课程一致：VWW 验证图像的偶数位（\texttt{split=0}，4,030 张）是验证集，奇数位（\texttt{split=1}，4,029 张）是 holdout，BN 在 holdout 上重标定；课程的 5 万条子网精度数据集只有宽度 0.5 / 0.75。
+MACs 与峰值内存由自写的闭式模型给出，不调用课程的 \texttt{count\_net\_flops}；精度预测器是 MLP，搜索是随机搜索与进化搜索。
+
+\subsection{效率模型与预测器}
+课程计数器基于 thop，BN 也被挂钩，按每个输出元素 4 次运算计入 MACs。闭式模型因此分两列：卷积 MACs，以及课程口径 = 卷积 MACs + 4 $\times$ BN 输出元素数（SE 的卷积和分类器没有 BN）。
+在 1,004 个随机子网上，MACs、峰值与参数量和课程计数器 0 差异，每个子网 0.21 ms，课程计数器 66 ms。
+预测器在 \texttt{split=1} 上测，MAE 0.18 pp（3 个种子平均，常数基线 1.53），Kendall $\tau$ 0.925；5 个网络的集成到 0.145 pp。
+
+\begin{table}[H]
+\centering\small
+\caption{Q9：predictor 选出的子网，\texttt{split=0} 实测（\texttt{lab3-nas/artifacts/raw/summary.json}）}\label{tab:nas}
+\begin{tabular}{lrrrrr}
+\toprule
+约束 & 精度 & MACs（课程 / 卷积） & 峰值 & 分辨率 & 达标候选 \\
+\midrule
+250 KB / 60M & 92.556\% & 59.38M / 53.14M & 250 KB & 160 & 67 / 210 \\
+200 KB / 30M & 90.372\% & 29.30M / 26.05M & 160 KB & 128 & 208 / 210 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\linewidth]{search_curves.png}\hfill
+\includegraphics[width=0.48\linewidth]{pareto.png}
+\caption{左：随机与进化搜索的最好预测精度随查询数变化（5 个种子）。右：2,000 个随机子网的 MACs--精度分布与前沿，按宽度着色。}\label{fig:nas}
+\end{figure}
+
+单维扫描（Q1）里分辨率影响最大（4.12 pp），其次宽度 1.34、深度 1.19、卷积核 0.94，扩张比只有 0.40。
+5,000 次查询时进化搜索 92.89\%，随机 92.19\%（预测值）。
+\Cref{tab:nas} 的 250 KB / 60M 一行达到 92.5\% 的门槛，但验证集的标准误是 0.41 pp：210 个候选里 67 个都过线，候选之间的 \texttt{split=1} 精度与 \texttt{split=0} 精度的 Kendall $\tau$ 只有 0.05，用 holdout 精度挑选反而拿到 92.333\%。
+2,000 个随机子网里，60M 以下宽度 0.5 的前沿最高（45--60M 档 92.56\%，宽度 0.75 / 1.0 为 91.69 / 90.37\%），60M 以上才轮到更宽的网络；课程数据集不含宽度 1.0，预测器对它系统性低估 0.93 pp（holdout），但排序仍在（$\tau$ 0.88）。
+
+\begin{findingbox}[：Lab 3]
+在 0.4 pp 的噪声带内，搜索只能区分“好的一群”，不能区分群内的名次：最终答案换一个选择规则就可能跌回门槛以下。
+效率模型必须按课程计数器的口径来（BN 也算 MACs），否则约束 60M 实际对应的卷积 MACs 只有 53M，与 MCU 上的真实开销对不上。
+\end{findingbox}
+
 \section{Lab 4：OPT-1.3B 上的 AWQ}\label{sec:lab4}
 
 \subsection{协议}
@@ -266,6 +309,8 @@ all\_techniques（8 线程） & \textbf{26.09} & \textbf{28.2} & \textbf{1150} &
 \bibitem{han2015} S.~Han, J.~Pool, J.~Tran, W.~J.~Dally. Learning both Weights and Connections for Efficient Neural Networks. \emph{NeurIPS}, 2015.
 \bibitem{deepcompression} S.~Han, H.~Mao, W.~J.~Dally. Deep Compression: Compressing Deep Neural Networks with Pruning, Trained Quantization and Huffman Coding. \emph{ICLR}, 2016.
 \bibitem{jacob2018} B.~Jacob, S.~Kligys, B.~Chen, M.~Zhu, M.~Tang, A.~Howard, H.~Adam, D.~Kalenichenko. Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference. \emph{CVPR}, 2018.
+\bibitem{ofa} H.~Cai, C.~Gan, T.~Wang, Z.~Zhang, S.~Han. Once-for-All: Train One Network and Specialize it for Efficient Deployment. \emph{ICLR}, 2020.
+\bibitem{mcunet} J.~Lin, W.-M.~Chen, Y.~Lin, J.~Cohn, C.~Gan, S.~Han. MCUNet: Tiny Deep Learning on IoT Devices. \emph{NeurIPS}, 2020.
 \bibitem{awq} J.~Lin, J.~Tang, H.~Tang, S.~Yang, W.-M.~Chen, W.-C.~Wang, G.~Xiao, X.~Dang, C.~Gan, S.~Han. AWQ: Activation-aware Weight Quantization for On-Device LLM Compression and Acceleration. \emph{MLSys}, 2024.
 \end{thebibliography}
 

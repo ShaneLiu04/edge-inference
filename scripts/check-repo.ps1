@@ -50,6 +50,11 @@ if ($LASTEXITCODE -ne 0) { $fail++ }
 
 Write-Host "== secrets =="
 $hits = & git -C $root grep -nIE "(gitee\.com/[^ ]*:[^ ]*@|password\s*=|[0-9a-f]{32})" -- ':!*.csv' ':!*.json' ':!*.jsonl' 2>$null
+# SHA256 digests (exactly 64 hex digits) are not secrets; anything else still fails.
+$hits = @($hits | Where-Object {
+    $_ -match "gitee\.com/[^ ]*:[^ ]*@|password\s*=" -or
+    @([regex]::Matches($_, "[0-9a-f]{32,}") | Where-Object { $_.Length -ne 64 }).Count -gt 0
+})
 if ($hits) { $hits | ForEach-Object { Write-Host "  $_" }; $fail++ } else { Write-Host "  OK" }
 
 if ($fail) { Write-Host "`nFAILED ($fail)"; exit 1 }

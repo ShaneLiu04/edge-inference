@@ -22,6 +22,8 @@
 | --- | --- | --- | ---: | --- |
 | 6.5940 Lab 1 | [mit6.5940/lab1-pruning](mit6.5940/lab1-pruning/README.md) | Python | 10 | 细粒度 23.6% 尺寸 92.72%；通道 30% 延迟 0.64 倍、92.52% |
 | 6.5940 Lab 2 | [mit6.5940/lab2-vgg](mit6.5940/lab2-vgg/README.md) | Python | 6 | k-means 2 bit QAT 22.73 → 92.18%；整数 int8 VGG 92.94% |
+| 6.5940 Lab 3 | [mit6.5940/lab3-nas](mit6.5940/lab3-nas/README.md) | Python | 29 | 闭式效率模型与课程计数器 1,004/1,004 一致；预测器 MAE 0.18 pp；250 KB / 60M 92.556% |
+| 6.5940 期末项目 | [mit6.5940/project-mcu-e2e](mit6.5940/project-mcu-e2e/README.md) | Python | 5 | 子网 int8 92.53%、估算 223 ms、patch 后 122 KB；mcunet-vww2 91.37%、234 ms、162 KB |
 | 6.5940 Lab 4 | [mit6.5940/lab4-awq](mit6.5940/lab4-awq/README.md) | Python | 4 | OPT-1.3B W3：RTN 107.97，AWQ 16.87，加截断 16.04 |
 | 6.5940 Lab 5 | [mit6.5940/lab5-tinychat](mit6.5940/lab5-tinychat/README.md) | C++ patch / Python | 6 | W4A8 kernel 28.2 倍，LLaMA2-7B decode 12.5 倍；`-O3` 51.5 倍 |
 | MLC 作业 1 | [mlc/e2e-relax](mlc/e2e-relax/README.md) | Python（TVM 0.27） | 6 | 默认 2375 µs → 手写调度 157 → MetaSchedule 44；准确率 83.88% |
@@ -29,7 +31,7 @@
 另有 `tools/tests`（计算器与 harness，15 个测试）。全量：
 
 ```powershell
-./scripts/run-all-tests.ps1            # 16 套，172 个测试（没装 TVM 时跳过 3 个）
+./scripts/run-all-tests.ps1            # 18 套，206 个测试（没装 TVM 时跳过 3 个）
 $env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1   # 无 AVX-512 的回退路径
 ```
 

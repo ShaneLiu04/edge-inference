@@ -18,7 +18,7 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-from .graph import trace
+from .graph import inplace_depthwise, trace
 from .planners import arena_size, greedy_by_size
 
 
@@ -82,27 +82,29 @@ class _Tail(nn.Module):
         return self.head(self.features(x))
 
 
-def peak(model: nn.Module, shape: tuple) -> int:
+def peak(model: nn.Module, shape: tuple, inplace: bool = False) -> int:
     ts = trace(model, shape)
+    if inplace:
+        ts = inplace_depthwise(ts)
     return arena_size(ts, greedy_by_size(ts))
 
 
 def patch_plan(features: nn.Sequential, head: nn.Module, resolution: int, cut: int, patches: int,
-               in_ch: int = 3) -> PatchResult:
+               in_ch: int = 3, inplace: bool = False) -> PatchResult:
+    """``inplace`` plans both halves with TinyEngine's in-place depthwise as well."""
     stage = features[:cut]
     rest = _Tail(features[cut:], head)
     with torch.no_grad():
         y = stage.eval()(torch.zeros(1, in_ch, resolution, resolution))
     _, c_out, h_out, _ = y.shape
     stage_out = c_out * h_out * h_out
-    rest_peak = peak(rest, tuple(y.shape))
+    rest_peak = peak(rest, tuple(y.shape), inplace)
     if patches == 1:
-        whole = trace(_Tail(features, head), (1, in_ch, resolution, resolution))
-        p = arena_size(whole, greedy_by_size(whole))
+        p = peak(_Tail(features, head), (1, in_ch, resolution, resolution), inplace)
         return PatchResult(cut, 1, resolution, stage_out, p, p, p, 1.0, 1.0)
     tile_out = math.ceil(h_out / patches)
     tile_in = min(resolution, input_extent(spatial_convs(list(stage)), tile_out))
-    patch_peak = stage_out + peak(stage, (1, in_ch, tile_in, tile_in))
+    patch_peak = stage_out + peak(stage, (1, in_ch, tile_in, tile_in), inplace)
     stage_macs = macs(stage, (1, in_ch, resolution, resolution))
     rest_macs = macs(rest, tuple(y.shape))
     patched_macs = patches ** 2 * macs(stage, (1, in_ch, tile_in, tile_in))

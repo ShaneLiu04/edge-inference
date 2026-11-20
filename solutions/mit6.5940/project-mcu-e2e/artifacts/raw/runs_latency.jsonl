@@ -1,0 +1,20 @@
+{"kind": "run", "git_commit": null, "git_dirty": null, "started": "2026-11-20T10:09:58+0800", "python": "3.12.3", "platform": "Linux-5.15.0-78-generic-x86_64-with-glibc2.35", "processor": "x86_64", "cpu_count": 208, "argv": ["scripts/run_project.py", "--stage", "latency"]}
+{"stage": "latency", "model": "mcunet-vww0", "backend": "torch-fp32-folded", "median_ms": 2.588, "p10_ms": 2.2195, "p90_ms": 2.8084}
+{"stage": "latency", "model": "mcunet-vww0", "backend": "ort-fp32", "median_ms": 0.2239, "p10_ms": 0.2184, "p90_ms": 0.2729}
+{"stage": "latency", "model": "mcunet-vww0", "backend": "ort-int8", "median_ms": 0.1957, "p10_ms": 0.1741, "p90_ms": 0.1975}
+{"stage": "latency", "model": "mcunet-vww0", "backend": "litert-int8-official", "median_ms": 3.6993, "p10_ms": 3.1838, "p90_ms": 4.4696}
+{"stage": "latency", "model": "mcunet-vww1", "backend": "torch-fp32-folded", "median_ms": 2.3566, "p10_ms": 2.0882, "p90_ms": 2.614}
+{"stage": "latency", "model": "mcunet-vww1", "backend": "ort-fp32", "median_ms": 0.4424, "p10_ms": 0.365, "p90_ms": 0.4557}
+{"stage": "latency", "model": "mcunet-vww1", "backend": "ort-int8", "median_ms": 0.3126, "p10_ms": 0.2943, "p90_ms": 0.339}
+{"stage": "latency", "model": "mcunet-vww1", "backend": "litert-int8-official", "median_ms": 3.3392, "p10_ms": 3.0112, "p90_ms": 3.6485}
+{"stage": "latency", "model": "mcunet-vww2", "backend": "torch-fp32-folded", "median_ms": 4.42, "p10_ms": 4.1024, "p90_ms": 5.1409}
+{"stage": "latency", "model": "mcunet-vww2", "backend": "ort-fp32", "median_ms": 1.3741, "p10_ms": 1.3316, "p90_ms": 1.7032}
+{"stage": "latency", "model": "mcunet-vww2", "backend": "ort-int8", "median_ms": 1.1745, "p10_ms": 1.1152, "p90_ms": 1.2934}
+{"stage": "latency", "model": "mcunet-vww2", "backend": "litert-int8-official", "median_ms": 15.7786, "p10_ms": 14.4643, "p90_ms": 17.5501}
+{"stage": "latency", "model": "ours-250KB-60M", "backend": "torch-fp32-folded", "median_ms": 4.9047, "p10_ms": 4.7351, "p90_ms": 5.8479}
+{"stage": "latency", "model": "ours-250KB-60M", "backend": "ort-fp32", "median_ms": 2.0458, "p10_ms": 1.9944, "p90_ms": 2.3184}
+{"stage": "latency", "model": "ours-250KB-60M", "backend": "ort-int8", "median_ms": 1.4152, "p10_ms": 1.3267, "p90_ms": 1.5583}
+{"stage": "latency", "model": "ours-200KB-30M", "backend": "torch-fp32-folded", "median_ms": 3.0237, "p10_ms": 2.8994, "p90_ms": 3.6251}
+{"stage": "latency", "model": "ours-200KB-30M", "backend": "ort-fp32", "median_ms": 1.1084, "p10_ms": 1.0635, "p90_ms": 1.3982}
+{"stage": "latency", "model": "ours-200KB-30M", "backend": "ort-int8", "median_ms": 0.7248, "p10_ms": 0.7047, "p90_ms": 0.7668}
+{"stage": "latency", "seconds": 18.3}

@@ -1,0 +1,4 @@
+{"kind": "run", "git_commit": null, "git_dirty": null, "started": "2026-11-20T10:00:35+0800", "python": "3.12.3", "platform": "Linux-5.15.0-78-generic-x86_64-with-glibc2.35", "processor": "x86_64", "cpu_count": 208, "argv": ["scripts/run_experiments.py", "--stage", "final"]}
+{"stage": "final", "constraint": "250KB/60M", "cfg": {"wid": 0, "image_size": 160, "ks": [3, 3, 7, 5, 5, 7, 3, 7, 5, 3, 3, 5, 5, 5, 3, 7, 7, 3, 7, 7], "e": [4, 3, 3, 6, 4, 6, 3, 4, 4, 6, 3, 6, 6, 4, 6, 6, 4, 6, 3, 4], "d": [1, 2, 2, 1, 2, 1]}, "acc_split0": 92.55583126550869, "acc_split1": 92.6036237279722}
+{"stage": "final", "constraint": "200KB/30M", "cfg": {"wid": 0, "image_size": 128, "ks": [7, 3, 3, 3, 7, 5, 7, 3, 5, 5, 5, 5, 3, 5, 5, 7, 3, 7, 3, 5], "e": [4, 3, 4, 6, 4, 4, 4, 4, 4, 3, 6, 6, 6, 6, 3, 6, 3, 3, 6, 3], "d": [1, 0, 0, 1, 1, 2]}, "acc_split0": 90.37220843672456, "acc_split1": 90.84139985107967}
+{"stage": "final", "seconds": 12.3}
