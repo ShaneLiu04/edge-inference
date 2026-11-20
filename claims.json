@@ -268,6 +268,10 @@
     {"id": "proj-patch-smallest", "note": "project: smallest subnet patch 23.7 KB", "file": "solutions/mit6.5940/project-mcu-e2e/artifacts/raw/summary.json", "field": "kb_patch_inplace_smallest-subnet", "expect": 23.7, "tol_abs": 0.01},
     {"id": "proj-patch-smallest-ovh", "note": "project: smallest subnet patch 1.21x MACs", "file": "solutions/mit6.5940/project-mcu-e2e/artifacts/raw/summary.json", "field": "patch_inplace_mac_overhead_smallest-subnet", "expect": 1.214, "tol_abs": 0.001},
     {"id": "proj-lat-ours60", "note": "project: ours 60M ORT int8 1.42 ms x86", "file": "solutions/mit6.5940/project-mcu-e2e/artifacts/raw/summary.json", "field": "lat_ours-250KB-60M_ort-int8_ms", "expect": 1.4152, "tol_abs": 0.0001},
-    {"id": "proj-lat-vww2-litert", "note": "project: vww2 LiteRT official 15.8 ms x86", "file": "solutions/mit6.5940/project-mcu-e2e/artifacts/raw/summary.json", "field": "lat_mcunet-vww2_litert-int8-official_ms", "expect": 15.7786, "tol_abs": 0.0001}
+    {"id": "proj-lat-vww2-litert", "note": "project: vww2 LiteRT official 15.8 ms x86", "file": "solutions/mit6.5940/project-mcu-e2e/artifacts/raw/summary.json", "field": "lat_mcunet-vww2_litert-int8-official_ms", "expect": 15.7786, "tol_abs": 0.0001},
+    {"id": "lab3-widen-base-bias", "note": "lab3 README: course-only predictor under-predicts width 1.0 by 0.86 pp (5-fold CV)", "file": "solutions/mit6.5940/lab3-nas/artifacts/raw/widen_predictor.json", "field": "widen_base_w1_bias_pp_mean", "expect": -0.8634, "tol_abs": 0.001},
+    {"id": "lab3-widen-x1-bias", "note": "lab3 README: with width-1.0 training folds the bias is 0.01 pp", "file": "solutions/mit6.5940/lab3-nas/artifacts/raw/widen_predictor.json", "field": "widen_w1x1_w1_bias_pp_mean", "expect": 0.0135, "tol_abs": 0.001},
+    {"id": "lab3-widen-x1-mae", "note": "lab3 README: width-1.0 MAE 0.18 pp with width-1.0 training folds", "file": "solutions/mit6.5940/lab3-nas/artifacts/raw/widen_predictor.json", "field": "widen_w1x1_w1_mae_pp_mean", "expect": 0.1778, "tol_abs": 0.001},
+    {"id": "lab3-widen-x1-course-mae", "note": "lab3 README: course validation MAE 0.168 pp with width-1.0 folds (no regression)", "file": "solutions/mit6.5940/lab3-nas/artifacts/raw/widen_predictor.json", "field": "widen_w1x1_course_val_mae_pp_mean", "expect": 0.1682, "tol_abs": 0.001}
   ]
 }

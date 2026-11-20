@@ -11,7 +11,7 @@
 | 笔记的结构（16 节、元数据、公式块、追问链）、到 mlsys-infra 笔记的链接、索引、术语 | `python notes/check_notes.py` | 8 讲全部通过 |
 | 全部测试，AVX-512 + VNNI | `./scripts/run-all-tests.ps1` | 18 套全部通过，本地 203 个 + 1 个跳过（没装 TVM 时 `e2e-relax/tests/test_relax.py` 整个跳过；服务器的 TVM 0.27 venv 上这 3 个也通过） |
 | 全部测试，无 AVX-512 的回退路径 | `$env:EDGE_MARCH = "haswell"; ./scripts/run-all-tests.ps1` | 18 套全部通过，203 个 + 1 个跳过（与 AVX-512 路径相同） |
-| README、笔记、报告里的关键数字与原始数据一致 | `python scripts/check_claims.py`（对照 `claims.json`） | 223 条全部吻合 |
+| README、笔记、报告里的关键数字与原始数据一致 | `python scripts/check_claims.py`（对照 `claims.json`） | 227 条全部吻合 |
 | Markdown 相对链接、实验目录结构、报告（PDF 存在、图能找到、每条参考文献都被引用且没有未定义的引用）、claims、密钥扫描 | `./scripts/check-repo.ps1`（报告部分由 `scripts/check_reports.py` 完成） | 通过，17 个实验，14 份报告 |
 | 代码风格 | `python -m ruff check .` | 通过 |
 | CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml)：Ubuntu + Python 3.12，CPU torch，ruff + `check-repo.ps1` + `run-all-tests.sh`；没有 mlsys-infra 同级目录时跳过跨仓库笔记名校验 | 配置就绪。Gitee 不原生运行 GitHub Actions，镜像到 GitHub 后生效 |
