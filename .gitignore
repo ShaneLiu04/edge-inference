@@ -55,3 +55,6 @@ reports/**/*.run.xml
 reports/**/*-blx.bib
 reports/**/*.log
 solutions/**/artifacts/seeds/*/work/
+
+# Local Xiaohongshu promo assets; never commit to GitHub
+promo/
